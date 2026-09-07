@@ -204,15 +204,32 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                 <span className="font-bold text-emerald-400">{result.specificEnergyKWhM3.toFixed(2)} кВт·ч/м³</span>
               </div>
             </div>
+
+            {/* Подписи и реквизиты разработчика */}
+            <div className="mt-5 pt-3 border-t border-slate-700/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] font-mono text-slate-400">
+              <div className="flex items-center gap-2">
+                <span>Разработчик инженерного комплекса:</span>
+                <span className="font-bold text-slate-100 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700">Носар Андрей</span>
+              </div>
+              <div className="flex items-center gap-3 text-slate-500">
+                <span>Стандарт: ГОСТ 34771 / API RP 11S2</span>
+                <span>•</span>
+                <span>Дата генерации: {new Date().toLocaleDateString('ru-RU')}</span>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Футер */}
         <div className="bg-[#182130] px-6 py-3 border-t border-[#243044] flex items-center justify-between text-xs">
-          <span className="text-slate-400">Программный комплекс расчета УЭЦН «ESP Expert v10.4»</span>
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400">Программный комплекс расчета УЭЦН «ESP Expert v10.4»</span>
+            <span className="text-slate-600 hidden sm:inline">•</span>
+            <span className="text-slate-400 hidden sm:inline">Разработчик: <strong className="text-sky-300 font-medium">Носар Андрей</strong></span>
+          </div>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 bg-[#243044] hover:bg-[#334155] text-slate-200 rounded-lg transition-all"
+            className="px-4 py-1.5 bg-[#243044] hover:bg-[#334155] text-slate-200 rounded-lg transition-all font-medium"
           >
             Закрыть
           </button>

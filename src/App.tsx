@@ -113,6 +113,35 @@ export default function App() {
         />
       </main>
 
+      {/* Инженерный CAD-футер приложения */}
+      <footer className="mt-6 bg-[#111722] border-t border-[#243044] text-xs text-slate-400">
+        <div className="max-w-[1720px] mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="font-mono font-bold text-slate-200">ESP EXPERT v10.4 PRO</span>
+            </div>
+            <span className="hidden sm:inline text-slate-600">|</span>
+            <span className="text-slate-400 text-[11px]">
+              Инженерно-технологический комплекс подбора погружного насосного оборудования УЭЦН
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-3 font-mono text-[11px]">
+            <div className="bg-[#172030] px-3 py-1.5 rounded-lg border border-[#2d3d56] text-slate-300 flex items-center gap-2 shadow-sm">
+              <span className="text-slate-500">Разработчик:</span>
+              <span className="font-bold text-sky-300">Носар Андрей</span>
+            </div>
+
+            <div className="bg-[#172030] px-2.5 py-1.5 rounded-lg border border-[#243044] text-slate-400 hidden lg:block">
+              ГОСТ 34771-2021 / API RP 11S2
+            </div>
+
+            <span className="text-slate-500">© {new Date().getFullYear()}</span>
+          </div>
+        </div>
+      </footer>
+
       {/* Модальное окно паспорта / техкарты для печати */}
       <ReportModal
         isOpen={isReportOpen}
