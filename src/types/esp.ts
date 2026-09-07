@@ -152,3 +152,57 @@ export interface CurvePoint {
   pShaft: number;              // Мощность всей сборки, кВт
   efficiency: number;          // КПД, %
 }
+
+export type ApplicationMode = 'sizing' | 'operation';
+
+export interface OperationParameters {
+  fixedStages: number;          // Смонтированное фактическое число ступеней насоса
+  operatingFrequency: number;  // Текущая частота ЧРП станции управления, Гц (30 - 70)
+  pBufOper: number;            // Фактическое буферное давление, атм
+  pAnnularOper: number;        // Фактическое затрубное давление, атм
+  chokeDiameterMm: number;     // Диаметр устьевого штуцера, мм (0 = штуцер отсутствует)
+  productivityIndex: number;   // Коэффициент продуктивности скважины K_прод, м³/(сут·атм)
+  tmsBottomholeP?: number;     // Замер ТМС: забойное давление, атм
+  tmsMotorTempC?: number;      // Замер ТМС: температура ПЭД, °C
+  tmsVibrationXY?: number;     // Замер ТМС: вибрация, м/с²
+}
+
+export interface OperatingPointResult {
+  actualQ: number;             // Равновесный фактический дебит скважины, м³/сут
+  actualHead: number;          // Фактический напор насоса, м
+  actualHDynamic: number;      // Фактический динамический уровень, м
+  submergenceM: number;        // Погружение насоса под динуровень, м
+  pIntakeAtm: number;          // Давление на приеме насоса, атм
+  pBottomholeAtm: number;      // Забойное давление, атм
+  freeGasIntakePct: number;    // Объемная доля свободного газа на приеме, %
+  gasSeparatorStatus: string;  // Состояние дегазации
+  shaftPowerKW: number;        // Потребляемая мощность на валу, кВт
+  hydraulicPowerKW: number;    // Полезная гидравлическая мощность, кВт
+  efficiencyPct: number;       // КПД насоса в рабочей точке, %
+  motorLoadPct: number;        // Загрузка ПЭД, %
+  motorLoadStatus: 'OPTIMAL' | 'ACCEPTABLE' | 'OVERLOAD' | 'UNDERLOAD';
+  motorCurrentA: number;       // Ток фазы электродвигателя, А
+  coolingVelocityMs: number;   // Скорость охлаждающего потока вдоль ПЭД, м/с
+  coolingStatus: 'OPTIMAL' | 'ACCEPTABLE' | 'WARNING' | 'CRITICAL';
+  cableVoltageDropV: number;   // Падение напряжения в кабельной линии, В
+  surfaceVoltageV: number;     // Требуемое напряжение на выходе ТМПН, В
+  dailyEnergyKWh: number;      // Суточный расход электроэнергии, кВт·ч/сут
+  specificEnergyKWhM3: number; // Удельный расход электроэнергии SEC, кВт·ч/м³
+  isWithinODR: boolean;        // Находится ли режим в оптимальном диапазоне подачи (ОДР)
+  qMinODR: number;             // Левая граница ОДР при текущей частоте, м³/сут
+  qMaxODR: number;             // Правая граница ОДР при текущей частоте, м³/сут
+  shutoffHead: number;         // Напор на закрытую задвижку, м
+  warnings: string[];          // Предупреждения по режиму эксплуатации
+}
+
+export interface RegulationPoint {
+  freq: number;                // Частота ЧРП, Гц
+  q: number;                   // Равновесный дебит, м³/сут
+  head: number;                // Напор, м
+  powerKW: number;             // Мощность вала, кВт
+  currentA: number;            // Ток мотора, А
+  motorLoadPct: number;        // Нагрузка ПЭД, %
+  coolingVelocityMs: number;   // Скорость охлаждения, м/с
+  isWithinODR: boolean;
+  isMotorOverloaded: boolean;
+}

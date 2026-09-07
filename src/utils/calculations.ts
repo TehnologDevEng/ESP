@@ -5,7 +5,10 @@ import {
   ElectricalParams,
   PumpModel,
   CalculationResult,
-  CurvePoint
+  CurvePoint,
+  OperationParameters,
+  OperatingPointResult,
+  RegulationPoint
 } from '../types/esp';
 import { MOTOR_DATABASE } from '../data/motors';
 import { CABLE_SPECS } from '../data/cables';
@@ -523,3 +526,362 @@ export function generateSystemHeadCurve(
 
   return points;
 }
+
+/**
+ * =========================================================================
+ * РЕЖИМ ЭКСПЛУАТАЦИИ (FIELD OPERATION & VFD REGULATION ANALYSIS)
+ * =========================================================================
+ * Моделирование работы уже спущенной компоновки УЭЦН с фиксированным числом
+ * ступеней Z, регулированием частоты ЧРП и устьевого штуцирования.
+ */
+
+/**
+ * Расчет базового коэффициента продуктивности пласта K_прод по скважинным параметрам
+ */
+export function estimateProductivityIndex(
+  well: WellParameters,
+  fluid: FluidProperties
+): number {
+  const { rhoMix } = calculateMixtureProperties(fluid);
+  const deltaH = Math.max(10, well.hDynamic - well.hStatic);
+  const deltaPAtm = (deltaH * rhoMix * G) / 101325;
+  const kProd = well.qTarget / Math.max(1, deltaPAtm);
+  return Math.max(0.1, Math.round(kProd * 100) / 100);
+}
+
+/**
+ * Расчет рабочей точки в режиме эксплуатации
+ */
+export function calculateOperatingPoint(
+  pump: PumpModel,
+  motor: CalculationResult['motor'],
+  well: WellParameters,
+  fluid: FluidProperties,
+  completion: CompletionGeometry,
+  electrical: ElectricalParams,
+  oper: OperationParameters
+): OperatingPointResult {
+  const { rhoMix, mixVisc } = calculateMixtureProperties(fluid);
+  const viscCorr = getViscosityCorrections(mixVisc, pump.qNom);
+  const kFreq = oper.operatingFrequency / 50;
+
+  const [a0, a1, a2] = pump.coeffH;
+  const [b0, b1, b2] = pump.coeffP;
+
+  // Напор на закрытую задвижку при данной частоте
+  const shutoffHead = oper.fixedStages * a0 * Math.pow(kFreq, 2) * viscCorr.cH;
+
+  // Функция напора насоса от дебита Q
+  const getPumpHead = (q: number) => {
+    if (q < 0) return shutoffHead;
+    const qEq = q / kFreq;
+    const h1 = (a0 - a1 * qEq - a2 * Math.pow(qEq, 2)) * Math.pow(kFreq, 2) * viscCorr.cH;
+    return oper.fixedStages * Math.max(0, h1);
+  };
+
+  // Гидравлические потери в штуцере (если установлен)
+  const getChokeHeadLoss = (q: number) => {
+    if (oper.chokeDiameterMm <= 0 || q <= 0) return 0;
+    const dChokeM = oper.chokeDiameterMm / 1000;
+    const aChokeM2 = (Math.PI * Math.pow(dChokeM, 2)) / 4;
+    const vChoke = (q / 86400) / aChokeM2;
+    const hLoss = 1.25 * (Math.pow(vChoke, 2) / (2 * G));
+    return Math.min(250, hLoss);
+  };
+
+  // Функция требуемого напора системы TDH(Q)
+  const getSystemHead = (q: number) => {
+    const deltaP = q / Math.max(0.01, oper.productivityIndex);
+    const pWf = Math.max(0, well.pReservoir - deltaP);
+    const hDynamic = well.hStatic + ((well.pReservoir - pWf) * 101325) / (rhoMix * G);
+
+    const hBuf = (oper.pBufOper * 101325) / (rhoMix * G);
+    const hAnn = (oper.pAnnularOper * 101325) / (rhoMix * G);
+    const hWellheadNet = Math.max(0, hBuf - hAnn);
+
+    const tubing = calculateTubingHydraulics(
+      q,
+      well.depthPump,
+      completion.tubingInnerDiam,
+      completion.tubingRoughness,
+      rhoMix,
+      mixVisc
+    );
+
+    const hChoke = getChokeHeadLoss(q);
+    return hDynamic + hWellheadNet + tubing.totalFriction + hChoke;
+  };
+
+  // 1. Проверка условия подъема (может ли насос подать жидкость на устье при Q=0)
+  const hSysAtZero = getSystemHead(0);
+  let actualQ = 0;
+  let actualHead = shutoffHead;
+
+  if (shutoffHead > hSysAtZero) {
+    // 2. Поиск точки пересечения H_pump(Q) = H_sys(Q) методом бисекции
+    let qLow = 0;
+    let qHigh = Math.max(20, pump.qMax * kFreq * 1.6);
+
+    while (getPumpHead(qHigh) > getSystemHead(qHigh) && qHigh < 1500) {
+      qHigh += 40;
+    }
+
+    for (let iter = 0; iter < 40; iter++) {
+      const qMid = (qLow + qHigh) / 2;
+      const diff = getPumpHead(qMid) - getSystemHead(qMid);
+      if (diff > 0) {
+        qLow = qMid;
+      } else {
+        qHigh = qMid;
+      }
+    }
+
+    actualQ = Math.max(0, (qLow + qHigh) / 2);
+    actualHead = getPumpHead(actualQ);
+  }
+
+  // Расчет установившихся эксплуатационных параметров в рабочей точке
+  const deltaPActual = actualQ / Math.max(0.01, oper.productivityIndex);
+  const pBottomholeAtm = Math.max(0, well.pReservoir - deltaPActual);
+  const actualHDynamic = well.hStatic + ((well.pReservoir - pBottomholeAtm) * 101325) / (rhoMix * G);
+  const submergenceM = Math.max(0, well.depthPump - actualHDynamic);
+  const pIntakeAtm = oper.pAnnularOper + (submergenceM * rhoMix * G) / 101325;
+
+  // Оценка свободного газа на приеме
+  let freeGasPct = 0;
+  if (pIntakeAtm < fluid.pSaturation) {
+    const deltaGasP = fluid.pSaturation - pIntakeAtm;
+    const degasRatio = Math.min(0.85, deltaGasP / Math.max(1, fluid.pSaturation));
+    const pIntakePa = pIntakeAtm * 101325;
+    const vGasFree = fluid.gasRatio * degasRatio * (101325 / pIntakePa) * ((273 + well.tReservoir) / 293);
+    freeGasPct = Math.min(75, Math.max(0, (vGasFree / (vGasFree + 1.0)) * 100));
+  }
+
+  let gasSeparatorStatus = 'Газосодержание в норме';
+  if (freeGasPct > 45) {
+    gasSeparatorStatus = 'Критический уровень газа (>45%). Требуется мультифазный модуль';
+  } else if (freeGasPct > 20) {
+    gasSeparatorStatus = 'Повышенный уровень газа (>20%). Включен диспергатор';
+  } else if (freeGasPct > 6) {
+    gasSeparatorStatus = 'Умеренный газ (>6%). Работает сепаратор';
+  }
+
+  // Мощность и КПД
+  const qEq = actualQ / kFreq;
+  const p1 = Math.max(0.05, (b0 + b1 * qEq + b2 * Math.pow(qEq, 2)) * Math.pow(kFreq, 3) * (rhoMix / 1000) * viscCorr.cP);
+  const pProtector = 2.5 * Math.pow(kFreq, 2);
+  const pSeparator = freeGasPct > 6 ? 3.5 * Math.pow(kFreq, 2) : 0;
+  const shaftPowerKW = oper.fixedStages * p1 + pProtector + pSeparator;
+
+  const qM3Sec = actualQ / 86400;
+  const hydraulicPowerKW = (rhoMix * G * qM3Sec * actualHead) / 1000;
+  const efficiencyPct = shaftPowerKW > 0 ? Math.min(88, Math.max(0, (hydraulicPowerKW / shaftPowerKW) * 100)) : 0;
+
+  // Загрузка двигателя и электрика
+  const motorLoadPct = (shaftPowerKW / motor.powerRatingKW) * 100;
+  let motorLoadStatus: 'OPTIMAL' | 'ACCEPTABLE' | 'OVERLOAD' | 'UNDERLOAD' = 'OPTIMAL';
+  if (motorLoadPct > 105) motorLoadStatus = 'OVERLOAD';
+  else if (motorLoadPct > 92) motorLoadStatus = 'ACCEPTABLE';
+  else if (motorLoadPct < 55) motorLoadStatus = 'UNDERLOAD';
+
+  const cableSpec = CABLE_SPECS.find(c => c.sectionMm2 === electrical.cableSection) || CABLE_SPECS[1];
+  const tWellAvg = (well.tReservoir + well.tWellhead) / 2;
+  const rCableTotal = cableSpec.resistanceOhmPerKm * (electrical.cableLength / 1000) * (1 + 0.00393 * (tWellAvg - 20));
+
+  const motorCurrentA = (shaftPowerKW * 1000) / (Math.sqrt(3) * motor.voltageV * motor.powerFactor * (motor.efficiency / 100));
+  const cableVoltageDropV = Math.sqrt(3) * motorCurrentA * rCableTotal;
+  const surfaceVoltageV = motor.voltageV + cableVoltageDropV;
+
+  const motorActivePowerKW = shaftPowerKW / (motor.efficiency / 100);
+  const cableLossKW = (3 * Math.pow(motorCurrentA, 2) * rCableTotal) / 1000;
+  const totalSurfacePowerKW = motorActivePowerKW + cableLossKW;
+  const dailyEnergyKWh = totalSurfacePowerKW * 24;
+  const specificEnergyKWhM3 = actualQ > 0 ? dailyEnergyKWh / actualQ : 0;
+
+  // Скорость охлаждения
+  const dCasInMm = completion.casingOuterDiam - 2 * completion.casingWallThickness;
+  const annularAreaM2 = Math.max(0.001, (Math.PI / 4) * (Math.pow(dCasInMm / 1000, 2) - Math.pow(motor.outerDiam / 1000, 2)));
+  const coolingVelocityMs = actualQ > 0 ? qM3Sec / annularAreaM2 : 0;
+
+  let coolingStatus: 'OPTIMAL' | 'ACCEPTABLE' | 'WARNING' | 'CRITICAL' = 'OPTIMAL';
+  if (actualQ === 0 || coolingVelocityMs < 0.08) {
+    coolingStatus = 'CRITICAL';
+  } else if (coolingVelocityMs < 0.12) {
+    coolingStatus = 'WARNING';
+  } else if (coolingVelocityMs < 0.16) {
+    coolingStatus = 'ACCEPTABLE';
+  }
+
+  // Границы ОДР на текущей частоте
+  const qMinODR = pump.qMin * kFreq;
+  const qMaxODR = pump.qMax * kFreq;
+  const isWithinODR = actualQ >= qMinODR && actualQ <= qMaxODR;
+
+  // Предупреждения по эксплуатации
+  const warnings: string[] = [];
+  if (actualQ === 0) {
+    warnings.push('Насос не продавливает систему (дебит = 0). Увеличьте частоту ЧРП или снизьте буферное давление.');
+  } else if (!isWithinODR) {
+    if (actualQ < qMinODR) {
+      warnings.push(`Фактический дебит (${actualQ.toFixed(1)} м³/сут) ниже левой границы ОДР (${qMinODR.toFixed(1)} м³/сут). Риск перегрева и засорения.`);
+    } else {
+      warnings.push(`Фактический дебит (${actualQ.toFixed(1)} м³/сут) выше правой границы ОДР (${qMaxODR.toFixed(1)} м³/сут). Риск осевого износа рабочих колес вниз.`);
+    }
+  }
+
+  if (motorLoadStatus === 'OVERLOAD') {
+    warnings.push(`ПЕРЕГРУЗКА ДВИГАТЕЛЯ (${motorLoadPct.toFixed(1)}% от номинала ${motor.powerRatingKW} кВт). Риск срабатывания защиты по току!`);
+  }
+  if (coolingStatus === 'CRITICAL') {
+    warnings.push(`Критически низкая скорость охлаждения ПЭД (${coolingVelocityMs.toFixed(3)} м/с). Риск термического пробоя изоляции обмоток.`);
+  }
+  if (pIntakeAtm < 12) {
+    warnings.push(`Низкое давление на приеме (${pIntakeAtm.toFixed(1)} атм). Высокий риск срыва подачи и кавитации.`);
+  }
+  if (freeGasPct > 25) {
+    warnings.push(`Повышенное содержание свободного газа на приеме (${freeGasPct.toFixed(1)}%). Рекомендуется приоткрыть затрубную задвижку.`);
+  }
+
+  return {
+    actualQ: Math.round(actualQ * 10) / 10,
+    actualHead: Math.round(actualHead * 10) / 10,
+    actualHDynamic: Math.round(actualHDynamic * 10) / 10,
+    submergenceM: Math.round(submergenceM * 10) / 10,
+    pIntakeAtm: Math.round(pIntakeAtm * 10) / 10,
+    pBottomholeAtm: Math.round(pBottomholeAtm * 10) / 10,
+    freeGasIntakePct: Math.round(freeGasPct * 10) / 10,
+    gasSeparatorStatus,
+    shaftPowerKW: Math.round(shaftPowerKW * 10) / 10,
+    hydraulicPowerKW: Math.round(hydraulicPowerKW * 10) / 10,
+    efficiencyPct: Math.round(efficiencyPct * 10) / 10,
+    motorLoadPct: Math.round(motorLoadPct * 10) / 10,
+    motorLoadStatus,
+    motorCurrentA: Math.round(motorCurrentA * 10) / 10,
+    coolingVelocityMs: Math.round(coolingVelocityMs * 1000) / 1000,
+    coolingStatus,
+    cableVoltageDropV: Math.round(cableVoltageDropV * 10) / 10,
+    surfaceVoltageV: Math.round(surfaceVoltageV * 10) / 10,
+    dailyEnergyKWh: Math.round(dailyEnergyKWh * 10) / 10,
+    specificEnergyKWhM3: Math.round(specificEnergyKWhM3 * 100) / 100,
+    isWithinODR,
+    qMinODR: Math.round(qMinODR * 10) / 10,
+    qMaxODR: Math.round(qMaxODR * 10) / 10,
+    shutoffHead: Math.round(shutoffHead * 10) / 10,
+    warnings
+  };
+}
+
+/**
+ * Кривые совместной работы скважины и насоса для графика в режиме эксплуатации
+ */
+export function generateOperatingPointCurves(
+  pump: PumpModel,
+  well: WellParameters,
+  fluid: FluidProperties,
+  completion: CompletionGeometry,
+  oper: OperationParameters,
+  maxQPlot: number
+): {
+  pumpCurve: { q: number; h: number }[];
+  systemCurve: { q: number; h: number }[];
+  odrMinQ: number;
+  odrMaxQ: number;
+} {
+  const { rhoMix, mixVisc } = calculateMixtureProperties(fluid);
+  const viscCorr = getViscosityCorrections(mixVisc, pump.qNom);
+  const kFreq = oper.operatingFrequency / 50;
+
+  const [a0, a1, a2] = pump.coeffH;
+
+  const pumpCurve: { q: number; h: number }[] = [];
+  const systemCurve: { q: number; h: number }[] = [];
+
+  const steps = 40;
+  const step = maxQPlot / steps;
+
+  for (let q = 0; q <= maxQPlot; q += step) {
+    // Напор насоса
+    const qEq = q / kFreq;
+    const h1 = (a0 - a1 * qEq - a2 * Math.pow(qEq, 2)) * Math.pow(kFreq, 2) * viscCorr.cH;
+    const hPump = oper.fixedStages * Math.max(0, h1);
+    pumpCurve.push({ q: Math.round(q * 10) / 10, h: Math.round(hPump * 10) / 10 });
+
+    // Потребный напор системы
+    const deltaP = q / Math.max(0.01, oper.productivityIndex);
+    const pWf = Math.max(0, well.pReservoir - deltaP);
+    const hDynamic = well.hStatic + ((well.pReservoir - pWf) * 101325) / (rhoMix * G);
+    const hBuf = (oper.pBufOper * 101325) / (rhoMix * G);
+    const hAnn = (oper.pAnnularOper * 101325) / (rhoMix * G);
+    const hWellheadNet = Math.max(0, hBuf - hAnn);
+
+    const tubing = calculateTubingHydraulics(
+      q,
+      well.depthPump,
+      completion.tubingInnerDiam,
+      completion.tubingRoughness,
+      rhoMix,
+      mixVisc
+    );
+
+    let hChoke = 0;
+    if (oper.chokeDiameterMm > 0 && q > 0) {
+      const dChokeM = oper.chokeDiameterMm / 1000;
+      const vChoke = (q / 86400) / ((Math.PI * Math.pow(dChokeM, 2)) / 4);
+      hChoke = Math.min(250, 1.25 * (Math.pow(vChoke, 2) / (2 * G)));
+    }
+
+    const hSys = hDynamic + hWellheadNet + tubing.totalFriction + hChoke;
+    systemCurve.push({ q: Math.round(q * 10) / 10, h: Math.round(hSys * 10) / 10 });
+  }
+
+  return {
+    pumpCurve,
+    systemCurve,
+    odrMinQ: Math.round(pump.qMin * kFreq * 10) / 10,
+    odrMaxQ: Math.round(pump.qMax * kFreq * 10) / 10
+  };
+}
+
+/**
+ * Диапазон регулирования ЧРП (Regulation Envelope)
+ * Расчет дебитов и нагрузок во всем диапазоне частот от 35 до 65 Гц с шагом 2.5 Гц
+ */
+export function generateVFDRegulationCurves(
+  pump: PumpModel,
+  motor: CalculationResult['motor'],
+  well: WellParameters,
+  fluid: FluidProperties,
+  completion: CompletionGeometry,
+  electrical: ElectricalParams,
+  oper: OperationParameters
+): RegulationPoint[] {
+  const freqs = [35, 37.5, 40, 42.5, 45, 47.5, 50, 52.5, 55, 57.5, 60, 62.5, 65];
+  const points: RegulationPoint[] = [];
+
+  for (const f of freqs) {
+    const res = calculateOperatingPoint(
+      pump,
+      motor,
+      well,
+      fluid,
+      completion,
+      electrical,
+      { ...oper, operatingFrequency: f }
+    );
+
+    points.push({
+      freq: f,
+      q: res.actualQ,
+      head: res.actualHead,
+      powerKW: res.shaftPowerKW,
+      currentA: res.motorCurrentA,
+      motorLoadPct: res.motorLoadPct,
+      coolingVelocityMs: res.coolingVelocityMs,
+      isWithinODR: res.isWithinODR,
+      isMotorOverloaded: res.motorLoadPct > 100
+    });
+  }
+
+  return points;
+}
+
