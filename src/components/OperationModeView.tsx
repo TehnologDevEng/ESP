@@ -8,6 +8,7 @@ import {
   ElectricalParams,
   OperationParameters
 } from '../types/esp';
+import { SmartNumberInput } from './SmartNumberInput';
 import {
   calculateOperatingPoint,
   generateOperatingPointCurves,
@@ -444,16 +445,25 @@ export const OperationModeView: React.FC<OperationModeViewProps> = ({
 
             {/* Ползунок регулятора частоты */}
             <div className="space-y-2">
-              <div className="flex justify-between text-xs font-mono text-slate-400">
+              <div className="flex justify-between items-center text-xs font-mono text-slate-400">
                 <span>30 Гц</span>
-                <span className="text-emerald-400 font-bold">{oper.operatingFrequency.toFixed(1)} Гц</span>
+                <div className="w-24">
+                  <SmartNumberInput
+                    value={oper.operatingFrequency}
+                    onChange={(val) => handleFreqChange(val)}
+                    min={30}
+                    max={70}
+                    unit="Гц"
+                    className="w-full bg-[#182232] border border-[#2e3e57] text-emerald-400 font-mono font-bold px-2 py-0.5 rounded text-xs text-center focus:outline-none pr-6"
+                  />
+                </div>
                 <span>70 Гц</span>
               </div>
               <input
                 type="range"
                 min="30"
                 max="70"
-                step="0.5"
+                step="0.1"
                 value={oper.operatingFrequency}
                 onChange={(e) => handleFreqChange(parseFloat(e.target.value))}
                 className="w-full h-2 bg-[#1a2332] rounded-lg appearance-none cursor-pointer accent-emerald-500"
@@ -583,16 +593,16 @@ export const OperationModeView: React.FC<OperationModeViewProps> = ({
               {/* Смонтированное число ступеней Z */}
               <div className="flex items-center justify-between gap-3 pt-1 border-t border-[#243044]">
                 <span className="text-slate-400">Смонтировано ступеней (Z):</span>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    min="20"
-                    max="550"
+                <div className="w-24">
+                  <SmartNumberInput
                     value={oper.fixedStages}
-                    onChange={(e) => setOper(prev => ({ ...prev, fixedStages: Math.max(1, parseInt(e.target.value) || 1) }))}
-                    className="w-20 bg-[#182232] border border-[#2e3e57] text-sky-400 font-mono font-bold px-2 py-1 rounded-lg text-xs text-right focus:outline-none"
+                    onChange={(val) => setOper(prev => ({ ...prev, fixedStages: Math.round(val) }))}
+                    min={10}
+                    max={600}
+                    allowDecimals={false}
+                    unit="ст."
+                    className="w-full bg-[#182232] border border-[#2e3e57] text-sky-400 font-mono font-bold px-2 py-1 rounded-lg text-xs text-right focus:outline-none pr-7"
                   />
-                  <span className="text-slate-400 text-xs">ст.</span>
                 </div>
               </div>
 

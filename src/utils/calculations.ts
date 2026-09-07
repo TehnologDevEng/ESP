@@ -197,10 +197,15 @@ export function evaluatePumpModel(
 ): CalculationResult {
   const { rhoMix, mixVisc } = calculateMixtureProperties(fluid);
 
+  // Безопасные значения параметров во время промежуточного набора текста
+  const safeQ = Math.max(0.1, well.qTarget || 0.1);
+  const safeDepth = Math.max(0, well.depthPump || 0);
+  const safeFreq = Math.max(20, electrical.frequency || 50);
+
   // Гидравлика в НКТ
   const tubing = calculateTubingHydraulics(
-    well.qTarget,
-    well.depthPump,
+    safeQ,
+    safeDepth,
     completion.tubingInnerDiam,
     completion.tubingRoughness,
     rhoMix,
@@ -217,7 +222,7 @@ export function evaluatePumpModel(
 
   // Условия на приеме
   const intake = calculateIntakeConditions(
-    well.depthPump,
+    safeDepth,
     well.hDynamic,
     well.pAnnular,
     rhoMix,
@@ -226,13 +231,13 @@ export function evaluatePumpModel(
   );
 
   // Коэффициент частоты
-  const kFreq = electrical.frequency / 50;
+  const kFreq = safeFreq / 50;
 
   // Вязкостная коррекция
   const viscCorr = getViscosityCorrections(mixVisc, pump.qNom);
 
   // Оценка напора и мощности 1 ступени при заданной подаче и частоте
-  const qEquiv = well.qTarget / kFreq;
+  const qEquiv = safeQ / kFreq;
   const [a0, a1, a2] = pump.coeffH;
   const [b0, b1, b2] = pump.coeffP;
 

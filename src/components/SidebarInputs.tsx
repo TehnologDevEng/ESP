@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { WellParameters, FluidProperties, CompletionGeometry, ElectricalParams } from '../types/esp';
 import { Settings2, Droplet, Cylinder, Zap, RotateCcw, HelpCircle } from 'lucide-react';
+import { SmartNumberInput } from './SmartNumberInput';
 
 interface SidebarInputsProps {
   well: WellParameters;
@@ -111,15 +112,13 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
                 <label className="text-slate-300 font-medium">Дебит жидкости (Q)</label>
                 <span className="font-mono text-sky-400 font-bold">{well.qTarget} м³/сут</span>
               </div>
-              <div className="relative flex items-center">
-                <input
-                  type="number"
-                  value={well.qTarget}
-                  onChange={(e) => updateWell('qTarget', Math.max(5, parseFloat(e.target.value) || 0))}
-                  className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-blue-500 pr-14"
-                />
-                <span className="absolute right-3 text-xs text-slate-400 font-mono pointer-events-none">м³/сут</span>
-              </div>
+              <SmartNumberInput
+                value={well.qTarget}
+                onChange={(val) => updateWell('qTarget', val)}
+                min={5}
+                max={800}
+                unit="м³/сут"
+              />
               <input
                 type="range"
                 min="10"
@@ -137,15 +136,13 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
                 <label className="text-slate-300 font-medium">Глубина спуска приема (Lспуск)</label>
                 <span className="font-mono text-amber-400 font-bold">{well.depthPump} м</span>
               </div>
-              <div className="relative flex items-center">
-                <input
-                  type="number"
-                  value={well.depthPump}
-                  onChange={(e) => updateWell('depthPump', Math.max(100, parseFloat(e.target.value) || 0))}
-                  className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-blue-500 pr-12"
-                />
-                <span className="absolute right-3 text-xs text-slate-400 font-mono pointer-events-none">м</span>
-              </div>
+              <SmartNumberInput
+                value={well.depthPump}
+                onChange={(val) => updateWell('depthPump', val)}
+                min={100}
+                max={4500}
+                unit="м"
+              />
             </div>
 
             {/* Динамический уровень */}
@@ -154,15 +151,13 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
                 <label className="text-slate-300 font-medium">Динамический уровень (Hдин)</label>
                 <span className="font-mono text-sky-300 font-bold">{well.hDynamic} м</span>
               </div>
-              <div className="relative flex items-center">
-                <input
-                  type="number"
-                  value={well.hDynamic}
-                  onChange={(e) => updateWell('hDynamic', Math.max(0, parseFloat(e.target.value) || 0))}
-                  className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-blue-500 pr-12"
-                />
-                <span className="absolute right-3 text-xs text-slate-400 font-mono pointer-events-none">м</span>
-              </div>
+              <SmartNumberInput
+                value={well.hDynamic}
+                onChange={(val) => updateWell('hDynamic', val)}
+                min={0}
+                max={4000}
+                unit="м"
+              />
             </div>
 
             {/* Статический уровень */}
@@ -171,42 +166,36 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
                 <label className="text-slate-400">Статический уровень (Hстат)</label>
                 <span className="font-mono text-slate-300">{well.hStatic} м</span>
               </div>
-              <div className="relative flex items-center">
-                <input
-                  type="number"
-                  value={well.hStatic}
-                  onChange={(e) => updateWell('hStatic', Math.max(0, parseFloat(e.target.value) || 0))}
-                  className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-blue-500 pr-12"
-                />
-                <span className="absolute right-3 text-xs text-slate-400 font-mono pointer-events-none">м</span>
-              </div>
+              <SmartNumberInput
+                value={well.hStatic}
+                onChange={(val) => updateWell('hStatic', val)}
+                min={0}
+                max={4000}
+                unit="м"
+              />
             </div>
 
             {/* Давления: Буферное и Затрубное */}
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-[11px] text-slate-400 block mb-1">P буферное</label>
-                <div className="relative flex items-center">
-                  <input
-                    type="number"
-                    value={well.pBuf}
-                    onChange={(e) => updateWell('pBuf', parseFloat(e.target.value) || 0)}
-                    className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-blue-500 pr-9"
-                  />
-                  <span className="absolute right-2 text-[10px] text-slate-400 font-mono">атм</span>
-                </div>
+                <SmartNumberInput
+                  value={well.pBuf}
+                  onChange={(val) => updateWell('pBuf', val)}
+                  min={0}
+                  max={100}
+                  unit="атм"
+                />
               </div>
               <div>
                 <label className="text-[11px] text-slate-400 block mb-1">P затрубное</label>
-                <div className="relative flex items-center">
-                  <input
-                    type="number"
-                    value={well.pAnnular}
-                    onChange={(e) => updateWell('pAnnular', parseFloat(e.target.value) || 0)}
-                    className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-blue-500 pr-9"
-                  />
-                  <span className="absolute right-2 text-[10px] text-slate-400 font-mono">атм</span>
-                </div>
+                <SmartNumberInput
+                  value={well.pAnnular}
+                  onChange={(val) => updateWell('pAnnular', val)}
+                  min={0}
+                  max={100}
+                  unit="атм"
+                />
               </div>
             </div>
 
@@ -214,29 +203,32 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
             <div className="grid grid-cols-3 gap-1.5 pt-1">
               <div>
                 <label className="text-[10px] text-slate-400 block mb-0.5">Кровля пласта</label>
-                <input
-                  type="number"
+                <SmartNumberInput
                   value={well.perfTop}
-                  onChange={(e) => updateWell('perfTop', parseFloat(e.target.value) || 0)}
-                  className="w-full bg-[#0b0e14] border border-[#243044] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none"
+                  onChange={(val) => updateWell('perfTop', val)}
+                  min={0}
+                  max={6000}
+                  className="w-full bg-[#0b0e14] border border-[#243044] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
               <div>
                 <label className="text-[10px] text-slate-400 block mb-0.5">Подошва</label>
-                <input
-                  type="number"
+                <SmartNumberInput
                   value={well.perfBottom}
-                  onChange={(e) => updateWell('perfBottom', parseFloat(e.target.value) || 0)}
-                  className="w-full bg-[#0b0e14] border border-[#243044] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none"
+                  onChange={(val) => updateWell('perfBottom', val)}
+                  min={0}
+                  max={6000}
+                  className="w-full bg-[#0b0e14] border border-[#243044] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
               <div>
                 <label className="text-[10px] text-slate-400 block mb-0.5">Забой</label>
-                <input
-                  type="number"
+                <SmartNumberInput
                   value={well.depthWell}
-                  onChange={(e) => updateWell('depthWell', parseFloat(e.target.value) || 0)}
-                  className="w-full bg-[#0b0e14] border border-[#243044] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none"
+                  onChange={(val) => updateWell('depthWell', val)}
+                  min={0}
+                  max={6000}
+                  className="w-full bg-[#0b0e14] border border-[#243044] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
             </div>
@@ -256,17 +248,13 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
                 <label className="text-slate-300 font-medium">Обводненность продукции</label>
                 <span className="font-mono text-emerald-400 font-bold">{fluid.waterCut}%</span>
               </div>
-              <div className="relative flex items-center">
-                <input
-                  type="number"
-                  value={fluid.waterCut}
-                  min="0"
-                  max="100"
-                  onChange={(e) => updateFluid('waterCut', Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
-                  className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-blue-500 pr-10"
-                />
-                <span className="absolute right-3 text-xs text-slate-400 font-mono pointer-events-none">%</span>
-              </div>
+              <SmartNumberInput
+                value={fluid.waterCut}
+                onChange={(val) => updateFluid('waterCut', val)}
+                min={0}
+                max={99.9}
+                unit="%"
+              />
               <input
                 type="range"
                 min="0"
@@ -283,43 +271,36 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
                 <label className="text-slate-300 font-medium">Вязкость нефти (пластовая)</label>
                 <span className="font-mono text-amber-400 font-bold">{fluid.oilViscosity} сП</span>
               </div>
-              <div className="relative flex items-center">
-                <input
-                  type="number"
-                  step="0.5"
-                  value={fluid.oilViscosity}
-                  onChange={(e) => updateFluid('oilViscosity', Math.max(0.2, parseFloat(e.target.value) || 0))}
-                  className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-blue-500 pr-14"
-                />
-                <span className="absolute right-3 text-xs text-slate-400 font-mono pointer-events-none">мПа·с</span>
-              </div>
+              <SmartNumberInput
+                value={fluid.oilViscosity}
+                onChange={(val) => updateFluid('oilViscosity', val)}
+                min={0.2}
+                max={300}
+                unit="мПа·с"
+              />
             </div>
 
             {/* Плотности нефти и воды */}
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-[11px] text-slate-400 block mb-1">Плотность нефти</label>
-                <div className="relative flex items-center">
-                  <input
-                    type="number"
-                    value={fluid.oilDensity}
-                    onChange={(e) => updateFluid('oilDensity', parseFloat(e.target.value) || 0)}
-                    className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-blue-500 pr-12"
-                  />
-                  <span className="absolute right-2 text-[9px] text-slate-400 font-mono">кг/м³</span>
-                </div>
+                <SmartNumberInput
+                  value={fluid.oilDensity}
+                  onChange={(val) => updateFluid('oilDensity', val)}
+                  min={500}
+                  max={1200}
+                  unit="кг/м³"
+                />
               </div>
               <div>
                 <label className="text-[11px] text-slate-400 block mb-1">Плотность воды</label>
-                <div className="relative flex items-center">
-                  <input
-                    type="number"
-                    value={fluid.waterDensity}
-                    onChange={(e) => updateFluid('waterDensity', parseFloat(e.target.value) || 0)}
-                    className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-blue-500 pr-12"
-                  />
-                  <span className="absolute right-2 text-[9px] text-slate-400 font-mono">кг/м³</span>
-                </div>
+                <SmartNumberInput
+                  value={fluid.waterDensity}
+                  onChange={(val) => updateFluid('waterDensity', val)}
+                  min={800}
+                  max={1300}
+                  unit="кг/м³"
+                />
               </div>
             </div>
 
@@ -327,27 +308,23 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-[11px] text-slate-400 block mb-1">Газовый фактор</label>
-                <div className="relative flex items-center">
-                  <input
-                    type="number"
-                    value={fluid.gasRatio}
-                    onChange={(e) => updateFluid('gasRatio', parseFloat(e.target.value) || 0)}
-                    className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-blue-500 pr-10"
-                  />
-                  <span className="absolute right-2 text-[9px] text-slate-400 font-mono">м³/т</span>
-                </div>
+                <SmartNumberInput
+                  value={fluid.gasRatio}
+                  onChange={(val) => updateFluid('gasRatio', val)}
+                  min={0}
+                  max={600}
+                  unit="м³/т"
+                />
               </div>
               <div>
                 <label className="text-[11px] text-slate-400 block mb-1">P насыщения</label>
-                <div className="relative flex items-center">
-                  <input
-                    type="number"
-                    value={fluid.pSaturation}
-                    onChange={(e) => updateFluid('pSaturation', parseFloat(e.target.value) || 0)}
-                    className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-blue-500 pr-9"
-                  />
-                  <span className="absolute right-2 text-[9px] text-slate-400 font-mono">атм</span>
-                </div>
+                <SmartNumberInput
+                  value={fluid.pSaturation}
+                  onChange={(val) => updateFluid('pSaturation', val)}
+                  min={0}
+                  max={400}
+                  unit="атм"
+                />
               </div>
             </div>
           </div>
@@ -414,29 +391,23 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-[11px] text-slate-400 block mb-1">Dвн трубы НКТ</label>
-                <div className="relative flex items-center">
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={completion.tubingInnerDiam}
-                    onChange={(e) => updateCompletion('tubingInnerDiam', parseFloat(e.target.value) || 0)}
-                    className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none pr-9"
-                  />
-                  <span className="absolute right-2 text-[10px] text-slate-400 font-mono">мм</span>
-                </div>
+                <SmartNumberInput
+                  value={completion.tubingInnerDiam}
+                  onChange={(val) => updateCompletion('tubingInnerDiam', val)}
+                  min={30}
+                  max={150}
+                  unit="мм"
+                />
               </div>
               <div>
                 <label className="text-[11px] text-slate-400 block mb-1">Шероховатость Δ</label>
-                <div className="relative flex items-center">
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={completion.tubingRoughness}
-                    onChange={(e) => updateCompletion('tubingRoughness', parseFloat(e.target.value) || 0)}
-                    className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none pr-9"
-                  />
-                  <span className="absolute right-2 text-[10px] text-slate-400 font-mono">мм</span>
-                </div>
+                <SmartNumberInput
+                  value={completion.tubingRoughness}
+                  onChange={(val) => updateCompletion('tubingRoughness', val)}
+                  min={0.005}
+                  max={0.5}
+                  unit="мм"
+                />
               </div>
             </div>
 
@@ -444,27 +415,23 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-[11px] text-slate-400 block mb-1">Кондуктор</label>
-                <div className="relative flex items-center">
-                  <input
-                    type="number"
-                    value={completion.conductorDepth}
-                    onChange={(e) => updateCompletion('conductorDepth', parseFloat(e.target.value) || 0)}
-                    className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none pr-7"
-                  />
-                  <span className="absolute right-2 text-[10px] text-slate-400 font-mono">м</span>
-                </div>
+                <SmartNumberInput
+                  value={completion.conductorDepth}
+                  onChange={(val) => updateCompletion('conductorDepth', val)}
+                  min={0}
+                  max={2500}
+                  unit="м"
+                />
               </div>
               <div>
                 <label className="text-[11px] text-slate-400 block mb-1">Башмак колонны</label>
-                <div className="relative flex items-center">
-                  <input
-                    type="number"
-                    value={completion.casingShoeDepth}
-                    onChange={(e) => updateCompletion('casingShoeDepth', parseFloat(e.target.value) || 0)}
-                    className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none pr-7"
-                  />
-                  <span className="absolute right-2 text-[10px] text-slate-400 font-mono">м</span>
-                </div>
+                <SmartNumberInput
+                  value={completion.casingShoeDepth}
+                  onChange={(val) => updateCompletion('casingShoeDepth', val)}
+                  min={0}
+                  max={6000}
+                  unit="м"
+                />
               </div>
             </div>
           </div>
@@ -483,18 +450,13 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
                 <label className="text-slate-300 font-medium">Частота тока ЧРП</label>
                 <span className="font-mono text-sky-400 font-extrabold text-sm">{electrical.frequency} Гц</span>
               </div>
-              <div className="relative flex items-center">
-                <input
-                  type="number"
-                  min="30"
-                  max="70"
-                  step="1"
-                  value={electrical.frequency}
-                  onChange={(e) => updateElectrical('frequency', Math.min(70, Math.max(30, parseFloat(e.target.value) || 50)))}
-                  className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-blue-500 pr-10"
-                />
-                <span className="absolute right-3 text-xs text-slate-400 font-mono pointer-events-none">Гц</span>
-              </div>
+              <SmartNumberInput
+                value={electrical.frequency}
+                onChange={(val) => updateElectrical('frequency', val)}
+                min={30}
+                max={70}
+                unit="Гц"
+              />
               <input
                 type="range"
                 min="35"
@@ -540,15 +502,13 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
                 <label className="text-slate-400">Длина кабельной линии</label>
                 <span className="font-mono text-slate-300">{electrical.cableLength} м</span>
               </div>
-              <div className="relative flex items-center">
-                <input
-                  type="number"
-                  value={electrical.cableLength}
-                  onChange={(e) => updateElectrical('cableLength', parseFloat(e.target.value) || 0)}
-                  className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-3 py-1.5 text-xs font-mono text-white focus:outline-none pr-10"
-                />
-                <span className="absolute right-3 text-xs text-slate-400 font-mono pointer-events-none">м</span>
-              </div>
+              <SmartNumberInput
+                value={electrical.cableLength}
+                onChange={(val) => updateElectrical('cableLength', val)}
+                min={50}
+                max={5000}
+                unit="м"
+              />
             </div>
 
             {/* Марка кабеля */}
