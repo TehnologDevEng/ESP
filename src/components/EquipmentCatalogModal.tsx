@@ -330,7 +330,7 @@ export const EquipmentCatalogModal: React.FC<EquipmentCatalogModalProps> = ({
                             )}
                           </div>
                           <p className="text-[11px] text-slate-400">
-                            Габарит {p.gab} · Ø{p.diam} мм · скв. ≥{p.minCol} мм
+                            Габарит {p.gab} · Ø{p.diam} мм · Dвн ≥{p.minCol} мм
                           </p>
                         </div>
 

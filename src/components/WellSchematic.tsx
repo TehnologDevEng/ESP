@@ -635,7 +635,7 @@ export const WellSchematic: React.FC<WellSchematicProps> = ({ result, well, comp
           </div>
           <div className="bg-[#0b0e14] p-1.5 rounded border border-[#1e2738]">
             <div className="text-slate-400">Погружение</div>
-            <div className="font-mono font-bold text-emerald-400 text-[11px]">{result.submergenceMeters} м</div>
+            <div className="font-mono font-bold text-emerald-400 text-[11px]">{Math.round(result.submergenceMeters)} м</div>
           </div>
         </div>
       </div>

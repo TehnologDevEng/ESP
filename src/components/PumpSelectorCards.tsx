@@ -21,7 +21,7 @@ export const PumpSelectorCards: React.FC<PumpSelectorCardsProps> = ({
 
   const filteredCandidates = useMemo(() => {
     return candidates.filter((res) => {
-      if (onlyCasingOk && !res.isCasingCompatible && res.pump.id !== selectedPumpId) return false;
+      if (onlyCasingOk && (!res.isCasingCompatible || res.fullStringHeadAtQ <= 0) && res.pump.id !== selectedPumpId) return false;
       if (gabFilter !== 'all' && res.pump.gabLabel !== gabFilter) return false;
       if (matFilter !== 'all' && res.pump.material !== matFilter) return false;
       return true;
@@ -90,7 +90,7 @@ export const PumpSelectorCards: React.FC<PumpSelectorCardsProps> = ({
               onChange={(e) => setOnlyCasingOk(e.target.checked)}
               className="accent-blue-500 rounded"
             />
-            <span>Проходит в колонну</span>
+            <span>Только подходящие</span>
           </label>
         </div>
       </div>
@@ -173,15 +173,17 @@ export const PumpSelectorCards: React.FC<PumpSelectorCardsProps> = ({
                     </div>
                   </div>
 
-                  {(res.shaftOverload || !res.isCasingCompatible || res.motorThermalOverload) && (
+                  {(res.fullStringHeadAtQ <= 0 || res.shaftOverload || !res.isCasingCompatible || res.motorThermalOverload) && (
                     <div className="mb-2 px-2 py-1 rounded bg-rose-950/60 border border-rose-800/70 text-[10px] text-rose-300 flex items-center gap-1.5">
                       <AlertTriangle className="w-3 h-3 shrink-0" />
                       <span className="truncate">
                         {!res.isCasingCompatible
                           ? `Не проходит в колонну (${pump.outerDiam} мм)`
-                          : res.shaftOverload
-                            ? `Перегруз вала (${res.shaftLoadPercent.toFixed(0)}%)`
-                            : `Превышение Tmax ПЭД (${motor.tempMaxC ?? 130}°C)`}
+                          : res.fullStringHeadAtQ <= 0
+                            ? `Срыв подачи (за границей H=0)`
+                            : res.shaftOverload
+                              ? `Перегруз вала (${res.shaftLoadPercent.toFixed(0)}%)`
+                              : `Превышение Tmax ПЭД (${motor.tempMaxC ?? 130}°C)`}
                       </span>
                     </div>
                   )}

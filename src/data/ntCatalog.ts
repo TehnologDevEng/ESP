@@ -65,78 +65,78 @@ export const NT_CATALOG_2026 = {
     {name:"Х22ЭЦНКИС3-350",q50:350,qmin:228,qmax:473,h_sec:1162,n100:46.0,eff:59,diam:81,gab:"3",mat:"нирезист",minCol:102,maxPwrDir:95,maxPwrSoft:120,l_sec:2.07,stages_per_section:100},
     
     // 5 нирезист
-    {name:"X22ЭЦНКИД5-20",q50:20,qmin:13,qmax:28,h_sec:460,n100:3.6,eff:42,diam:92,gab:"5",mat:"нирезист",minCol:140,maxPwrDir:100,maxPwrSoft:120,l_sec:0.16,stages_per_section:100},
-    {name:"X22ЭЦНКИС5-25И",q50:25,qmin:16,qmax:35,h_sec:485,n100:3.2,eff:42,diam:92,gab:"5",mat:"нирезист",minCol:140,maxPwrDir:100,maxPwrSoft:120,l_sec:0.14,stages_per_section:100},
-    {name:"X22ЭЦНКИД5-30",q50:30,qmin:20,qmax:42,h_sec:520,n100:4.8,eff:44,diam:92,gab:"5",mat:"нирезист",minCol:140,maxPwrDir:120,maxPwrSoft:150,l_sec:0.22,stages_per_section:100},
-    {name:"X22ЭЦНКИС5-30И",q50:30,qmin:20,qmax:42,h_sec:468,n100:3.2,eff:44,diam:92,gab:"5",mat:"нирезист",minCol:140,maxPwrDir:120,maxPwrSoft:150,l_sec:0.14,stages_per_section:100},
-    {name:"X22ЭЦНКИД5-35",q50:35,qmin:23,qmax:49,h_sec:450,n100:5.0,eff:46,diam:92,gab:"5",mat:"нирезист",minCol:140,maxPwrDir:120,maxPwrSoft:150,l_sec:0.23,stages_per_section:100},
-    {name:"X22ЭЦНКИД5-45",q50:45,qmin:29,qmax:62,h_sec:438,n100:5.0,eff:50,diam:92,gab:"5",mat:"нирезист",minCol:140,maxPwrDir:130,maxPwrSoft:160,l_sec:0.23,stages_per_section:100},
-    {name:"X22ЭЦНКИД5-50",q50:50,qmin:33,qmax:68,h_sec:510,n100:6.0,eff:58,diam:92,gab:"5",mat:"нирезист",minCol:140,maxPwrDir:130,maxPwrSoft:160,l_sec:0.27,stages_per_section:100},
-    {name:"X22ЭЦНКИД5-60",q50:60,qmin:40,qmax:82,h_sec:475,n100:7.0,eff:58,diam:92,gab:"5",mat:"нирезист",minCol:140,maxPwrDir:130,maxPwrSoft:160,l_sec:0.32,stages_per_section:100},
-    {name:"X22ЭЦНКИД5-80",q50:80,qmin:52,qmax:108,h_sec:432,n100:7.0,eff:60,diam:92,gab:"5",mat:"нирезист",minCol:140,maxPwrDir:150,maxPwrSoft:180,l_sec:0.32,stages_per_section:100},
-    {name:"X22ЭЦНКИД5-80И",q50:80,qmin:52,qmax:108,h_sec:811,n100:9.0,eff:62,diam:92,gab:"5",mat:"нирезист",minCol:140,maxPwrDir:150,maxPwrSoft:180,l_sec:0.41,stages_per_section:100},
-    {name:"X22ЭЦНКИД5-100",q50:100,qmin:65,qmax:135,h_sec:466,n100:10.0,eff:63,diam:92,gab:"5",mat:"нирезист",minCol:140,maxPwrDir:160,maxPwrSoft:200,l_sec:0.45,stages_per_section:100},
-    {name:"X22ЭЦНКИД5-100И",q50:100,qmin:65,qmax:135,h_sec:465,n100:10.0,eff:63,diam:92,gab:"5",mat:"нирезист",minCol:140,maxPwrDir:160,maxPwrSoft:200,l_sec:0.45,stages_per_section:100},
-    {name:"X22ЭЦНКИД5-125",q50:125,qmin:82,qmax:168,h_sec:470,n100:9.0,eff:64,diam:92,gab:"5",mat:"нирезист",minCol:140,maxPwrDir:170,maxPwrSoft:210,l_sec:0.41,stages_per_section:100},
-    {name:"X22ЭЦНКИД5-125М",q50:125,qmin:82,qmax:168,h_sec:869,n100:10.0,eff:64,diam:92,gab:"5",mat:"нирезист",minCol:140,maxPwrDir:170,maxPwrSoft:210,l_sec:0.45,stages_per_section:100},
-    {name:"X22ЭЦНКИ5-125",q50:125,qmin:82,qmax:168,h_sec:485,n100:9.0,eff:64,diam:92,gab:"5",mat:"нирезист",minCol:140,maxPwrDir:170,maxPwrSoft:210,l_sec:0.41,stages_per_section:100},
-    {name:"X22ЭЦНКИД5-160",q50:160,qmin:104,qmax:216,h_sec:329,n100:10.0,eff:65,diam:92,gab:"5",mat:"нирезист",minCol:140,maxPwrDir:180,maxPwrSoft:220,l_sec:0.45,stages_per_section:100},
-    {name:"X22ЭЦНКИД5-200И",q50:200,qmin:130,qmax:270,h_sec:304,n100:16.0,eff:66,diam:92,gab:"5",mat:"нирезист",minCol:140,maxPwrDir:200,maxPwrSoft:250,l_sec:0.72,stages_per_section:100},
-    {name:"X22ЭЦНКИД5-200М",q50:200,qmin:130,qmax:270,h_sec:1207,n100:9.0,eff:66,diam:92,gab:"5",mat:"нирезист",minCol:140,maxPwrDir:200,maxPwrSoft:250,l_sec:0.41,stages_per_section:100},
+    {name:"X22ЭЦНКИД5-20",q50:20,qmin:13,qmax:28,h_sec:460,n100:3.6,eff:42,diam:92,gab:"5",mat:"нирезист",minCol:118,maxPwrDir:100,maxPwrSoft:120,l_sec:0.16,stages_per_section:100},
+    {name:"X22ЭЦНКИС5-25И",q50:25,qmin:16,qmax:35,h_sec:485,n100:3.2,eff:42,diam:92,gab:"5",mat:"нирезист",minCol:118,maxPwrDir:100,maxPwrSoft:120,l_sec:0.14,stages_per_section:100},
+    {name:"X22ЭЦНКИД5-30",q50:30,qmin:20,qmax:42,h_sec:520,n100:4.8,eff:44,diam:92,gab:"5",mat:"нирезист",minCol:118,maxPwrDir:120,maxPwrSoft:150,l_sec:0.22,stages_per_section:100},
+    {name:"X22ЭЦНКИС5-30И",q50:30,qmin:20,qmax:42,h_sec:468,n100:3.2,eff:44,diam:92,gab:"5",mat:"нирезист",minCol:118,maxPwrDir:120,maxPwrSoft:150,l_sec:0.14,stages_per_section:100},
+    {name:"X22ЭЦНКИД5-35",q50:35,qmin:23,qmax:49,h_sec:450,n100:5.0,eff:46,diam:92,gab:"5",mat:"нирезист",minCol:118,maxPwrDir:120,maxPwrSoft:150,l_sec:0.23,stages_per_section:100},
+    {name:"X22ЭЦНКИД5-45",q50:45,qmin:29,qmax:62,h_sec:438,n100:5.0,eff:50,diam:92,gab:"5",mat:"нирезист",minCol:118,maxPwrDir:130,maxPwrSoft:160,l_sec:0.23,stages_per_section:100},
+    {name:"X22ЭЦНКИД5-50",q50:50,qmin:33,qmax:68,h_sec:510,n100:6.0,eff:58,diam:92,gab:"5",mat:"нирезист",minCol:118,maxPwrDir:130,maxPwrSoft:160,l_sec:0.27,stages_per_section:100},
+    {name:"X22ЭЦНКИД5-60",q50:60,qmin:40,qmax:82,h_sec:475,n100:7.0,eff:58,diam:92,gab:"5",mat:"нирезист",minCol:118,maxPwrDir:130,maxPwrSoft:160,l_sec:0.32,stages_per_section:100},
+    {name:"X22ЭЦНКИД5-80",q50:80,qmin:52,qmax:108,h_sec:432,n100:7.0,eff:60,diam:92,gab:"5",mat:"нирезист",minCol:118,maxPwrDir:150,maxPwrSoft:180,l_sec:0.32,stages_per_section:100},
+    {name:"X22ЭЦНКИД5-80И",q50:80,qmin:52,qmax:108,h_sec:811,n100:9.0,eff:62,diam:92,gab:"5",mat:"нирезист",minCol:118,maxPwrDir:150,maxPwrSoft:180,l_sec:0.41,stages_per_section:100},
+    {name:"X22ЭЦНКИД5-100",q50:100,qmin:65,qmax:135,h_sec:466,n100:10.0,eff:63,diam:92,gab:"5",mat:"нирезист",minCol:118,maxPwrDir:160,maxPwrSoft:200,l_sec:0.45,stages_per_section:100},
+    {name:"X22ЭЦНКИД5-100И",q50:100,qmin:65,qmax:135,h_sec:465,n100:10.0,eff:63,diam:92,gab:"5",mat:"нирезист",minCol:118,maxPwrDir:160,maxPwrSoft:200,l_sec:0.45,stages_per_section:100},
+    {name:"X22ЭЦНКИД5-125",q50:125,qmin:82,qmax:168,h_sec:470,n100:9.0,eff:64,diam:92,gab:"5",mat:"нирезист",minCol:118,maxPwrDir:170,maxPwrSoft:210,l_sec:0.41,stages_per_section:100},
+    {name:"X22ЭЦНКИД5-125М",q50:125,qmin:82,qmax:168,h_sec:869,n100:10.0,eff:64,diam:92,gab:"5",mat:"нирезист",minCol:118,maxPwrDir:170,maxPwrSoft:210,l_sec:0.45,stages_per_section:100},
+    {name:"X22ЭЦНКИ5-125",q50:125,qmin:82,qmax:168,h_sec:485,n100:9.0,eff:64,diam:92,gab:"5",mat:"нирезист",minCol:118,maxPwrDir:170,maxPwrSoft:210,l_sec:0.41,stages_per_section:100},
+    {name:"X22ЭЦНКИД5-160",q50:160,qmin:104,qmax:216,h_sec:329,n100:10.0,eff:65,diam:92,gab:"5",mat:"нирезист",minCol:118,maxPwrDir:180,maxPwrSoft:220,l_sec:0.45,stages_per_section:100},
+    {name:"X22ЭЦНКИД5-200И",q50:200,qmin:130,qmax:270,h_sec:304,n100:16.0,eff:66,diam:92,gab:"5",mat:"нирезист",minCol:118,maxPwrDir:200,maxPwrSoft:250,l_sec:0.72,stages_per_section:100},
+    {name:"X22ЭЦНКИД5-200М",q50:200,qmin:130,qmax:270,h_sec:1207,n100:9.0,eff:66,diam:92,gab:"5",mat:"нирезист",minCol:118,maxPwrDir:200,maxPwrSoft:250,l_sec:0.41,stages_per_section:100},
     
     // 5 ПКМ
-    {name:"X22ПЭЦНКИД5-30",q50:30,qmin:20,qmax:42,h_sec:520,n100:5.0,eff:48,diam:92,gab:"5",mat:"ПКМ",minCol:140,maxPwrDir:120,maxPwrSoft:150,l_sec:0.23,stages_per_section:100},
-    {name:"X22ПЭЦНКИД5-45",q50:45,qmin:29,qmax:62,h_sec:438,n100:5.0,eff:52,diam:92,gab:"5",mat:"ПКМ",minCol:140,maxPwrDir:130,maxPwrSoft:160,l_sec:0.23,stages_per_section:100},
-    {name:"X22ПЭЦНКИД5-50",q50:50,qmin:33,qmax:68,h_sec:510,n100:6.0,eff:58,diam:92,gab:"5",mat:"ПКМ",minCol:140,maxPwrDir:130,maxPwrSoft:160,l_sec:0.27,stages_per_section:100},
-    {name:"X22ПЭЦНКИД5-60",q50:60,qmin:40,qmax:82,h_sec:475,n100:7.0,eff:60,diam:92,gab:"5",mat:"ПКМ",minCol:140,maxPwrDir:130,maxPwrSoft:160,l_sec:0.32,stages_per_section:100},
-    {name:"X22ПЭЦНКИД5-80",q50:80,qmin:52,qmax:108,h_sec:432,n100:7.0,eff:62,diam:92,gab:"5",mat:"ПКМ",minCol:140,maxPwrDir:150,maxPwrSoft:180,l_sec:0.32,stages_per_section:100},
-    {name:"X22ПЭЦНКИ5-125",q50:125,qmin:82,qmax:168,h_sec:485,n100:9.0,eff:64,diam:92,gab:"5",mat:"ПКМ",minCol:140,maxPwrDir:170,maxPwrSoft:210,l_sec:0.41,stages_per_section:100},
-    {name:"X22ПЭЦНКИ5-145",q50:145,qmin:94,qmax:196,h_sec:485,n100:10.0,eff:65,diam:92,gab:"5",mat:"ПКМ",minCol:140,maxPwrDir:170,maxPwrSoft:210,l_sec:0.45,stages_per_section:100},
-    {name:"X22ПЭЦНКИ5-200И",q50:200,qmin:130,qmax:270,h_sec:304,n100:16.0,eff:66,diam:92,gab:"5",mat:"ПКМ",minCol:140,maxPwrDir:200,maxPwrSoft:250,l_sec:0.72,stages_per_section:100},
+    {name:"X22ПЭЦНКИД5-30",q50:30,qmin:20,qmax:42,h_sec:520,n100:5.0,eff:48,diam:92,gab:"5",mat:"ПКМ",minCol:118,maxPwrDir:120,maxPwrSoft:150,l_sec:0.23,stages_per_section:100},
+    {name:"X22ПЭЦНКИД5-45",q50:45,qmin:29,qmax:62,h_sec:438,n100:5.0,eff:52,diam:92,gab:"5",mat:"ПКМ",minCol:118,maxPwrDir:130,maxPwrSoft:160,l_sec:0.23,stages_per_section:100},
+    {name:"X22ПЭЦНКИД5-50",q50:50,qmin:33,qmax:68,h_sec:510,n100:6.0,eff:58,diam:92,gab:"5",mat:"ПКМ",minCol:118,maxPwrDir:130,maxPwrSoft:160,l_sec:0.27,stages_per_section:100},
+    {name:"X22ПЭЦНКИД5-60",q50:60,qmin:40,qmax:82,h_sec:475,n100:7.0,eff:60,diam:92,gab:"5",mat:"ПКМ",minCol:118,maxPwrDir:130,maxPwrSoft:160,l_sec:0.32,stages_per_section:100},
+    {name:"X22ПЭЦНКИД5-80",q50:80,qmin:52,qmax:108,h_sec:432,n100:7.0,eff:62,diam:92,gab:"5",mat:"ПКМ",minCol:118,maxPwrDir:150,maxPwrSoft:180,l_sec:0.32,stages_per_section:100},
+    {name:"X22ПЭЦНКИ5-125",q50:125,qmin:82,qmax:168,h_sec:485,n100:9.0,eff:64,diam:92,gab:"5",mat:"ПКМ",minCol:118,maxPwrDir:170,maxPwrSoft:210,l_sec:0.41,stages_per_section:100},
+    {name:"X22ПЭЦНКИ5-145",q50:145,qmin:94,qmax:196,h_sec:485,n100:10.0,eff:65,diam:92,gab:"5",mat:"ПКМ",minCol:118,maxPwrDir:170,maxPwrSoft:210,l_sec:0.45,stages_per_section:100},
+    {name:"X22ПЭЦНКИ5-200И",q50:200,qmin:130,qmax:270,h_sec:304,n100:16.0,eff:66,diam:92,gab:"5",mat:"ПКМ",minCol:118,maxPwrDir:200,maxPwrSoft:250,l_sec:0.72,stages_per_section:100},
     
     // 5А нирезист
-    {name:"X22ЭЦНКИД5А-25И",q50:25,qmin:16,qmax:35,h_sec:1200,n100:5.0,eff:48,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:130,maxPwrSoft:160,l_sec:0.23,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-35И",q50:35,qmin:23,qmax:49,h_sec:1050,n100:6.0,eff:50,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:130,maxPwrSoft:160,l_sec:0.27,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-35",q50:35,qmin:23,qmax:49,h_sec:1050,n100:6.0,eff:50,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:130,maxPwrSoft:160,l_sec:0.27,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-45",q50:45,qmin:29,qmax:62,h_sec:960,n100:7.0,eff:52,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:140,maxPwrSoft:170,l_sec:0.32,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-50",q50:50,qmin:33,qmax:68,h_sec:920,n100:8.0,eff:54,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:140,maxPwrSoft:170,l_sec:0.36,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-60",q50:60,qmin:40,qmax:82,h_sec:840,n100:9.0,eff:56,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:150,maxPwrSoft:180,l_sec:0.41,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-80И",q50:80,qmin:52,qmax:108,h_sec:720,n100:10.0,eff:58,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:160,maxPwrSoft:200,l_sec:0.45,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-100",q50:100,qmin:65,qmax:135,h_sec:640,n100:11.0,eff:60,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:170,maxPwrSoft:210,l_sec:0.50,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-125",q50:125,qmin:82,qmax:168,h_sec:580,n100:12.0,eff:62,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:180,maxPwrSoft:220,l_sec:0.54,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-160И",q50:160,qmin:104,qmax:216,h_sec:500,n100:14.0,eff:64,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:200,maxPwrSoft:240,l_sec:0.63,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-160М",q50:160,qmin:104,qmax:216,h_sec:520,n100:15.0,eff:64,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:200,maxPwrSoft:240,l_sec:0.68,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-200М",q50:200,qmin:130,qmax:270,h_sec:450,n100:17.0,eff:66,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:220,maxPwrSoft:260,l_sec:0.77,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-250",q50:250,qmin:163,qmax:338,h_sec:400,n100:20.0,eff:68,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:250,maxPwrSoft:300,l_sec:0.90,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-250М",q50:250,qmin:163,qmax:338,h_sec:420,n100:21.0,eff:68,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:250,maxPwrSoft:300,l_sec:0.95,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-280М",q50:280,qmin:182,qmax:378,h_sec:380,n100:23.0,eff:70,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:270,maxPwrSoft:320,l_sec:1.04,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-320",q50:320,qmin:208,qmax:432,h_sec:350,n100:25.0,eff:72,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:280,maxPwrSoft:340,l_sec:1.13,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-360",q50:360,qmin:234,qmax:486,h_sec:310,n100:28.0,eff:73,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:300,maxPwrSoft:360,l_sec:1.26,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-400",q50:400,qmin:260,qmax:540,h_sec:290,n100:30.0,eff:74,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:320,maxPwrSoft:380,l_sec:1.35,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-400М",q50:400,qmin:260,qmax:540,h_sec:300,n100:32.0,eff:74,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:320,maxPwrSoft:380,l_sec:1.44,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-500",q50:500,qmin:325,qmax:675,h_sec:250,n100:35.0,eff:76,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:360,maxPwrSoft:420,l_sec:1.58,stages_per_section:100},
-    {name:"X22ЭЦНКИД5А-500М",q50:500,qmin:325,qmax:675,h_sec:260,n100:38.0,eff:76,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:360,maxPwrSoft:420,l_sec:1.71,stages_per_section:100},
-    {name:"X22ЭЦНКИС5А-700",q50:700,qmin:455,qmax:945,h_sec:200,n100:45.0,eff:78,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:400,maxPwrSoft:480,l_sec:2.03,stages_per_section:100},
-    {name:"X22ЭЦНКИС5А-800",q50:800,qmin:520,qmax:1080,h_sec:170,n100:50.0,eff:79,diam:103,gab:"5A",mat:"нирезист",minCol:130,maxPwrDir:450,maxPwrSoft:520,l_sec:2.25,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-25И",q50:25,qmin:16,qmax:35,h_sec:1200,n100:5.0,eff:48,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:130,maxPwrSoft:160,l_sec:0.23,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-35И",q50:35,qmin:23,qmax:49,h_sec:1050,n100:6.0,eff:50,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:130,maxPwrSoft:160,l_sec:0.27,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-35",q50:35,qmin:23,qmax:49,h_sec:1050,n100:6.0,eff:50,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:130,maxPwrSoft:160,l_sec:0.27,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-45",q50:45,qmin:29,qmax:62,h_sec:960,n100:7.0,eff:52,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:140,maxPwrSoft:170,l_sec:0.32,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-50",q50:50,qmin:33,qmax:68,h_sec:920,n100:8.0,eff:54,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:140,maxPwrSoft:170,l_sec:0.36,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-60",q50:60,qmin:40,qmax:82,h_sec:840,n100:9.0,eff:56,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:150,maxPwrSoft:180,l_sec:0.41,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-80И",q50:80,qmin:52,qmax:108,h_sec:720,n100:10.0,eff:58,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:160,maxPwrSoft:200,l_sec:0.45,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-100",q50:100,qmin:65,qmax:135,h_sec:640,n100:11.0,eff:60,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:170,maxPwrSoft:210,l_sec:0.50,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-125",q50:125,qmin:82,qmax:168,h_sec:580,n100:12.0,eff:62,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:180,maxPwrSoft:220,l_sec:0.54,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-160И",q50:160,qmin:104,qmax:216,h_sec:500,n100:14.0,eff:64,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:200,maxPwrSoft:240,l_sec:0.63,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-160М",q50:160,qmin:104,qmax:216,h_sec:520,n100:15.0,eff:64,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:200,maxPwrSoft:240,l_sec:0.68,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-200М",q50:200,qmin:130,qmax:270,h_sec:450,n100:17.0,eff:66,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:220,maxPwrSoft:260,l_sec:0.77,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-250",q50:250,qmin:163,qmax:338,h_sec:400,n100:20.0,eff:68,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:250,maxPwrSoft:300,l_sec:0.90,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-250М",q50:250,qmin:163,qmax:338,h_sec:420,n100:21.0,eff:68,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:250,maxPwrSoft:300,l_sec:0.95,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-280М",q50:280,qmin:182,qmax:378,h_sec:380,n100:23.0,eff:70,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:270,maxPwrSoft:320,l_sec:1.04,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-320",q50:320,qmin:208,qmax:432,h_sec:350,n100:25.0,eff:72,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:280,maxPwrSoft:340,l_sec:1.13,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-360",q50:360,qmin:234,qmax:486,h_sec:310,n100:28.0,eff:73,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:300,maxPwrSoft:360,l_sec:1.26,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-400",q50:400,qmin:260,qmax:540,h_sec:290,n100:30.0,eff:74,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:320,maxPwrSoft:380,l_sec:1.35,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-400М",q50:400,qmin:260,qmax:540,h_sec:300,n100:32.0,eff:74,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:320,maxPwrSoft:380,l_sec:1.44,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-500",q50:500,qmin:325,qmax:675,h_sec:250,n100:35.0,eff:76,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:360,maxPwrSoft:420,l_sec:1.58,stages_per_section:100},
+    {name:"X22ЭЦНКИД5А-500М",q50:500,qmin:325,qmax:675,h_sec:260,n100:38.0,eff:76,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:360,maxPwrSoft:420,l_sec:1.71,stages_per_section:100},
+    {name:"X22ЭЦНКИС5А-700",q50:700,qmin:455,qmax:945,h_sec:200,n100:45.0,eff:78,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:400,maxPwrSoft:480,l_sec:2.03,stages_per_section:100},
+    {name:"X22ЭЦНКИС5А-800",q50:800,qmin:520,qmax:1080,h_sec:170,n100:50.0,eff:79,diam:103,gab:"5A",mat:"нирезист",minCol:124,maxPwrDir:450,maxPwrSoft:520,l_sec:2.25,stages_per_section:100},
     
     // 5А ПКМ
-    {name:"X22ПЭЦНКИД5А-35И",q50:35,qmin:23,qmax:49,h_sec:1050,n100:6.0,eff:50,diam:103,gab:"5A",mat:"ПКМ",minCol:130,maxPwrDir:130,maxPwrSoft:160,l_sec:0.27,stages_per_section:100},
-    {name:"X22ПЭЦНКИД5А-60И",q50:60,qmin:40,qmax:82,h_sec:840,n100:9.0,eff:56,diam:103,gab:"5A",mat:"ПКМ",minCol:130,maxPwrDir:150,maxPwrSoft:180,l_sec:0.41,stages_per_section:100},
-    {name:"X22ПЭЦНКИ5А-160М",q50:160,qmin:104,qmax:216,h_sec:520,n100:15.0,eff:64,diam:103,gab:"5A",mat:"ПКМ",minCol:130,maxPwrDir:200,maxPwrSoft:240,l_sec:0.68,stages_per_section:100},
-    {name:"X22ПЭЦНКИ5А-250",q50:250,qmin:163,qmax:338,h_sec:400,n100:20.0,eff:68,diam:103,gab:"5A",mat:"ПКМ",minCol:130,maxPwrDir:250,maxPwrSoft:300,l_sec:0.90,stages_per_section:100},
-    {name:"X22ПЭЦНКИД5А-400",q50:400,qmin:260,qmax:540,h_sec:290,n100:30.0,eff:74,diam:103,gab:"5A",mat:"ПКМ",minCol:130,maxPwrDir:320,maxPwrSoft:380,l_sec:1.35,stages_per_section:100},
+    {name:"X22ПЭЦНКИД5А-35И",q50:35,qmin:23,qmax:49,h_sec:1050,n100:6.0,eff:50,diam:103,gab:"5A",mat:"ПКМ",minCol:124,maxPwrDir:130,maxPwrSoft:160,l_sec:0.27,stages_per_section:100},
+    {name:"X22ПЭЦНКИД5А-60И",q50:60,qmin:40,qmax:82,h_sec:840,n100:9.0,eff:56,diam:103,gab:"5A",mat:"ПКМ",minCol:124,maxPwrDir:150,maxPwrSoft:180,l_sec:0.41,stages_per_section:100},
+    {name:"X22ПЭЦНКИ5А-160М",q50:160,qmin:104,qmax:216,h_sec:520,n100:15.0,eff:64,diam:103,gab:"5A",mat:"ПКМ",minCol:124,maxPwrDir:200,maxPwrSoft:240,l_sec:0.68,stages_per_section:100},
+    {name:"X22ПЭЦНКИ5А-250",q50:250,qmin:163,qmax:338,h_sec:400,n100:20.0,eff:68,diam:103,gab:"5A",mat:"ПКМ",minCol:124,maxPwrDir:250,maxPwrSoft:300,l_sec:0.90,stages_per_section:100},
+    {name:"X22ПЭЦНКИД5А-400",q50:400,qmin:260,qmax:540,h_sec:290,n100:30.0,eff:74,diam:103,gab:"5A",mat:"ПКМ",minCol:124,maxPwrDir:320,maxPwrSoft:380,l_sec:1.35,stages_per_section:100},
     
     // 6 нирезист
-    {name:"X22ЭЦНКИС6-1000",q50:1000,qmin:650,qmax:1350,h_sec:160,n100:190,eff:58,diam:114,gab:"6",mat:"нирезист",minCol:168,maxPwrDir:500,maxPwrSoft:600,l_sec:8.55,stages_per_section:100},
-    {name:"X22ЭЦНКИС6-1250",q50:1250,qmin:812,qmax:1688,h_sec:130,n100:220,eff:58,diam:114,gab:"6",mat:"нирезист",minCol:168,maxPwrDir:600,maxPwrSoft:720,l_sec:9.90,stages_per_section:100},
+    {name:"X22ЭЦНКИС6-1000",q50:1000,qmin:650,qmax:1350,h_sec:160,n100:190,eff:58,diam:114,gab:"6",mat:"нирезист",minCol:140,maxPwrDir:500,maxPwrSoft:600,l_sec:8.55,stages_per_section:100},
+    {name:"X22ЭЦНКИС6-1250",q50:1250,qmin:812,qmax:1688,h_sec:130,n100:220,eff:58,diam:114,gab:"6",mat:"нирезист",minCol:140,maxPwrDir:600,maxPwrSoft:720,l_sec:9.90,stages_per_section:100},
     
     // 7А нирезист
-    {name:"X22ЭЦНКИС7А-1000",q50:1000,qmin:650,qmax:1350,h_sec:180,n100:210,eff:59,diam:136,gab:"7A",mat:"нирезист",minCol:178,maxPwrDir:600,maxPwrSoft:720,l_sec:9.45,stages_per_section:100},
-    {name:"X22ЭЦНКИС7А-1500",q50:1500,qmin:975,qmax:2025,h_sec:140,n100:290,eff:59,diam:136,gab:"7A",mat:"нирезист",minCol:178,maxPwrDir:700,maxPwrSoft:840,l_sec:13.05,stages_per_section:100},
-    {name:"X22ЭЦНКИС7А-1600",q50:1600,qmin:1040,qmax:2160,h_sec:130,n100:305,eff:59,diam:136,gab:"7A",mat:"нирезист",minCol:178,maxPwrDir:750,maxPwrSoft:900,l_sec:13.73,stages_per_section:100},
+    {name:"X22ЭЦНКИС7А-1000",q50:1000,qmin:650,qmax:1350,h_sec:180,n100:210,eff:59,diam:136,gab:"7A",mat:"нирезист",minCol:156,maxPwrDir:600,maxPwrSoft:720,l_sec:9.45,stages_per_section:100},
+    {name:"X22ЭЦНКИС7А-1500",q50:1500,qmin:975,qmax:2025,h_sec:140,n100:290,eff:59,diam:136,gab:"7A",mat:"нирезист",minCol:156,maxPwrDir:700,maxPwrSoft:840,l_sec:13.05,stages_per_section:100},
+    {name:"X22ЭЦНКИС7А-1600",q50:1600,qmin:1040,qmax:2160,h_sec:130,n100:305,eff:59,diam:136,gab:"7A",mat:"нирезист",minCol:156,maxPwrDir:750,maxPwrSoft:900,l_sec:13.73,stages_per_section:100},
     
     // Винтовой
-    {name:"ВН5-50-1500",type:"винтовой",q50:50,qmin:20,qmax:70,h_sec:1500,n100:15.0,eff:65,diam:102,gab:"5A",mat:"винт",minCol:130,maxPwrDir:100,maxPwrSoft:140,l_sec:0.68,stages_per_section:100}
+    {name:"ВН5-50-1500",type:"винтовой",q50:50,qmin:20,qmax:70,h_sec:1500,n100:15.0,eff:65,diam:102,gab:"5A",mat:"винт",minCol:124,maxPwrDir:100,maxPwrSoft:140,l_sec:0.68,stages_per_section:100}
   ] as NTPumpRaw[],
 
   motors: [
@@ -219,29 +219,42 @@ export const NT_CATALOG_2026 = {
 export function convertNTPumpToModel(p: NTPumpRaw, index: number): PumpModel {
   const stagesCount = p.stages_per_section || 100;
   const hStageNom = p.h_sec / stagesCount;
-  const pStageNom = p.n100 / stagesCount;
+  // Термодинамически согласованная мощность 1 ступени в номинале (50 Гц, вода 1000 кг/м³):
+  // P = rho * g * Q * H / eff
+  const pHydrStageNom = (1000 * 9.80665 * (p.q50 / 86400) * hStageNom) / 1000;
+  const pStageNom = pHydrStageNom / (Math.max(20, p.eff) / 100);
   
   // Коэффициенты аппроксимации кривой H(Q) = a0 - a1*Q - a2*Q^2
-  // a0 ~ 1.25 * hStageNom (напор при закрытой задвижке)
-  const a0 = Number((hStageNom * 1.28).toFixed(3));
-  const a2 = Number((0.28 * hStageNom / (p.q50 * p.q50)).toFixed(7));
-  const a1 = Number(((a0 - hStageNom - a2 * p.q50 * p.q50) / p.q50).toFixed(5));
+  // a0 = 1.28 * hStageNom (напор при закрытой задвижке); при Q = q50 напор точно равен hStageNom
+  const a0 = Number((hStageNom * 1.28).toFixed(4));
+  const a1Raw = (0.14 * hStageNom) / p.q50;
+  const a2Raw = (0.14 * hStageNom) / (p.q50 * p.q50);
+  const a1 = Number(a1Raw.toPrecision(6));
+  const a2 = Number(a2Raw.toPrecision(6));
 
   // Коэффициенты аппроксимации мощности P(Q) = b0 + b1*Q + b2*Q^2
-  const b0 = Number((pStageNom * 0.52).toFixed(4));
-  const b1 = Number(((pStageNom * 0.48) / p.q50).toFixed(6));
+  const b0 = Number((pStageNom * 0.48).toPrecision(6));
+  const b1 = Number(((pStageNom * 0.52) / p.q50).toPrecision(6));
   const b2 = 0;
 
   // КПД: Eff(Q) = c0 + c1*Q - c2*Q^2
-  const c2 = Number((p.eff / (p.q50 * p.q50)).toFixed(6));
-  const c1 = Number((2 * p.eff / p.q50).toFixed(4));
+  const c2 = Number((p.eff / (p.q50 * p.q50)).toPrecision(6));
+  const c1 = Number(((2 * p.eff) / p.q50).toPrecision(6));
   const c0 = 0;
 
   // Габаритная серия насоса
   const seriesNum = p.gab === '2A' ? 2 : p.gab === '3' ? 3 : p.gab === '5' ? 5 : p.gab === '5A' ? 5.5 : p.gab === '6' ? 6 : 7;
   
-  // Монтажная длина одной ступени (мм)
-  const stageLengthMm = Math.max(35, Math.min(85, Math.round(p.l_sec * 1000 / 4)));
+  // Реалистичная монтажная длина одной ступени по габариту (мм)
+  const stageLengthMap: Record<NTPumpRaw['gab'], number> = {
+    '2A': 36,
+    '3': 42,
+    '5': 48,
+    '5A': 55,
+    '6': 72,
+    '7A': 86
+  };
+  const stageLengthMm = p.mat === 'винт' ? 55 : stageLengthMap[p.gab] ?? 48;
 
   const id = `nt-${p.name.toLowerCase().replace(/[^a-z0-9а-яё]/gi, '-')}-${index}`;
 
@@ -258,13 +271,13 @@ export function convertNTPumpToModel(p: NTPumpRaw, index: number): PumpModel {
     qMin: p.qmin,
     qMax: p.qmax,
     hStageNom: Number(hStageNom.toFixed(2)),
-    pStageNom: Number(pStageNom.toFixed(3)),
+    pStageNom: Number(pStageNom.toFixed(4)),
     effNom: p.eff,
     stageLength: stageLengthMm,
     maxStagesPerSection: stagesCount,
     maxPwrDir: p.maxPwrDir,
     maxPwrSoft: p.maxPwrSoft,
-    coeffH: [a0, Math.max(0.001, a1), Math.max(0.00001, a2)],
+    coeffH: [a0, Math.max(1e-6, a1), Math.max(1e-9, a2)],
     coeffP: [b0, b1, b2],
     coeffEff: [c0, c1, c2]
   };

@@ -50,7 +50,7 @@ export default function App() {
   const [manualMotorId, setManualMotorId] = useState<string>('');
   const [manualHydroId, setManualHydroId] = useState<string>('');
 
-  const [selectedPumpId, setSelectedPumpId] = useState<string>(PUMP_DATABASE[0]?.id || '');
+  const [selectedPumpId, setSelectedPumpId] = useState<string>('');
   const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
   const [isCatalogOpen, setIsCatalogOpen] = useState<boolean>(false);
 
@@ -83,6 +83,7 @@ export default function App() {
     setMotorPreference('auto');
     setManualMotorId('');
     setManualHydroId('');
+    setSelectedPumpId('');
   };
 
   // Обработчик выбора сохраненной скважины

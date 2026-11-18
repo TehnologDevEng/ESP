@@ -152,7 +152,7 @@ export function calculateIntakeConditions(
   if (pIntakeAtm < fluid.pSaturation && fluid.gasRatio > 0) {
     const deltaP = fluid.pSaturation - pIntakeAtm;
     const degasRatio = Math.min(0.88, deltaP / Math.max(1, fluid.pSaturation));
-    const oilFraction = Math.max(0.005, 1 - Math.max(0, Math.min(100, fluid.waterCut)) / 100);
+    const oilFraction = Math.max(0, 1 - Math.max(0, Math.min(100, fluid.waterCut)) / 100);
     // Пересчет ГОФ (м³/т дегазированной нефти) на 1 м³ смеси с учетом обводненности и плотности нефти
     const oilTonsPerM3Mix = oilFraction * (fluid.oilDensity / 1000);
     const vGasFree =
@@ -204,17 +204,17 @@ export function calculateIntakeConditions(
  * Коррекция на вязкость (ANSI/HI 9.6.7)
  */
 export function getViscosityCorrections(mixViscCP: number, qNomM3Day: number) {
-  if (mixViscCP <= 10) {
+  if (mixViscCP <= 8) {
     return { cH: 1.0, cQ: 1.0, cEff: 1.0, cP: 1.0 };
   }
 
-  const nuCSt = mixViscCP;
-  const b = 16.5 * Math.pow(nuCSt, 0.5) / Math.pow(qNomM3Day, 0.25);
+  const qM3H = Math.max(0.5, qNomM3Day / 24);
+  const b = (2.6 * Math.pow(mixViscCP - 5, 0.5)) / Math.pow(qM3H, 0.25);
 
-  const cH = Math.max(0.70, 1 - 0.008 * b);
-  const cQ = Math.max(0.75, 1 - 0.007 * b);
-  const cEff = Math.max(0.50, 1 - 0.022 * b);
-  const cP = 1 / cEff;
+  const cH = Math.max(0.70, 1 - 0.011 * b);
+  const cQ = Math.max(0.75, 1 - 0.009 * b);
+  const cEff = Math.max(0.45, 1 - 0.026 * b);
+  const cP = cH / cEff;
 
   return { cH, cQ, cEff, cP };
 }
@@ -235,18 +235,20 @@ function selectMotorForWell(
   }
 
   const pref = options?.motorPreference || 'auto';
-  const highTempRequired = tReservoirC + 25 > 130;
+  const highTempRequired = tReservoirC + 20 > 130;
 
   // Фильтруем по габариту колонны (радиальный зазор мин. 3 мм -> 6 мм по диаметру)
   const casingFitting = MOTOR_DATABASE.filter(m => m.outerDiam <= dCasInMm - 6);
   const pool = casingFitting.length > 0 ? casingFitting : MOTOR_DATABASE;
 
-  // Фильтр по типу ПЭД / ВПЭД
+  // Фильтр по типу ПЭД / ВПЭД:
+  // В режиме 'auto' при высокой температуре (>110°C) выбираем термостойкий ВПЭД,
+  // а в стандартных скважинах — серийный асинхронный ПЭД
   let typeFiltered = pool;
   if (pref === 'впэд' || (pref === 'auto' && highTempRequired)) {
     const pmsmPool = pool.filter(m => m.motorType === 'впэд');
     if (pmsmPool.length > 0) typeFiltered = pmsmPool;
-  } else if (pref === 'пэд') {
+  } else if (pref === 'пэд' || (pref === 'auto' && !highTempRequired)) {
     const asyncPool = pool.filter(m => m.motorType === 'пэд');
     if (asyncPool.length > 0) typeFiltered = asyncPool;
   }
@@ -360,14 +362,29 @@ export function evaluatePumpModel(
   const [a0, a1, a2] = pump.coeffH;
   const [b0, b1, b2] = pump.coeffP;
 
-  const hStage50 = Math.max(0.5, a0 - a1 * qEquiv - a2 * Math.pow(qEquiv, 2));
-  const pStage50 = Math.max(0.1, b0 + b1 * qEquiv + b2 * Math.pow(qEquiv, 2));
+  const hStageRaw50 = a0 - a1 * qEquiv - a2 * Math.pow(qEquiv, 2);
+  const isHydraulicHeadZero = hStageRaw50 <= 0;
+  const hStage50 = Math.max(0, hStageRaw50);
+  const pStage50 = Math.max(0.02, b0 + b1 * qEquiv + b2 * Math.pow(qEquiv, 2));
 
-  const hStageReal = hStage50 * Math.pow(kFreq, 2) * viscCorr.cH * intake.gasHeadDegradationFactor;
+  const hStageReal = isHydraulicHeadZero
+    ? 0
+    : hStage50 * Math.pow(kFreq, 2) * viscCorr.cH * intake.gasHeadDegradationFactor;
   const pStageReal = pStage50 * Math.pow(kFreq, 3) * (rhoMix / 1000) * viscCorr.cP;
 
-  // Необходимое число ступеней
-  const totalStages = Math.max(1, Math.ceil(tdhInfo.totalDynamicHead / hStageReal));
+  // Опорный напор на правой границе рабочего диапазона (для оценки, если точка ушла за H=0)
+  const hStageAtQMax50 = Math.max(0.5, a0 - a1 * pump.qMax - a2 * Math.pow(pump.qMax, 2));
+  const hStageSizing = isHydraulicHeadZero
+    ? hStageAtQMax50 * Math.pow(kFreq, 2) * viscCorr.cH * intake.gasHeadDegradationFactor
+    : Math.max(0.5, hStageReal);
+
+  // Необходимое число ступеней (ограничение физического секционирования не более 8 секций для аварийных случаев)
+  const maxAllowedStages = pump.maxStagesPerSection * 8;
+  const rawTotalStages = Math.max(1, Math.ceil(tdhInfo.totalDynamicHead / hStageSizing));
+  const stagesCapped = rawTotalStages > maxAllowedStages;
+  const totalStages = isHydraulicHeadZero
+    ? Math.min(pump.maxStagesPerSection * 6, rawTotalStages)
+    : Math.min(maxAllowedStages, rawTotalStages);
 
   // Разбивка на секции
   const numSections = Math.ceil(totalStages / pump.maxStagesPerSection);
@@ -396,10 +413,12 @@ export function evaluatePumpModel(
   const fullStringHydraulicPowerKW = (rhoMix * G * qM3Sec * fullStringHeadAtQ) / 1000;
 
   // КПД всей насосной установки
-  const fullStringEfficiency = Math.min(
-    88,
-    Math.max(5, (fullStringHydraulicPowerKW / fullStringShaftPowerKW) * 100)
-  );
+  const fullStringEfficiency = isHydraulicHeadZero
+    ? 0
+    : Math.min(
+        88,
+        Math.max(5, (fullStringHydraulicPowerKW / Math.max(0.1, fullStringShaftPowerKW)) * 100)
+      );
 
   // Напор на закрытую задвижку (Q = 0)
   const shutoffHead = totalStages * a0 * Math.pow(kFreq, 2) * viscCorr.cH * intake.gasHeadDegradationFactor;
@@ -494,23 +513,39 @@ export function evaluatePumpModel(
   const devFromBep = Math.abs(safeQ - qNomAtFreq) / qNomAtFreq;
   let score = Math.max(20, Math.round(100 - devFromBep * 75));
 
-  // Инженерные штрафы
+  // Инженерные штрафы и бонусы
   if (!isWithinOperatingRange) score -= 25;
+  if (numSections > 4) score -= Math.min(24, (numSections - 4) * 6);
+  if (pump.effNom >= 60) score += 3;
   if (coolingStatus === 'CRITICAL') score -= 20;
   else if (coolingStatus === 'WARNING') score -= 10;
   if (motorLoadStatus === 'OVERLOAD') score -= 25;
   if (shaftOverload) score -= 30;
   if (motorThermalOverload) score -= 20;
-  if (!isCasingCompatible) score = 0;
+  if (!isCasingCompatible || isHydraulicHeadZero) score = 0;
 
-  score = isCasingCompatible ? Math.max(5, Math.min(100, score)) : 0;
+  score = isCasingCompatible && !isHydraulicHeadZero ? Math.max(5, Math.min(100, score)) : 0;
 
   // Предупреждения
   const warnings: string[] = [];
+  if (isHydraulicHeadZero) {
+    warnings.push(
+      `КРИТИЧЕСКОЕ НЕСООТВЕТСТВИЕ ПОДАЧИ: при дебите ${safeQ} м³/сут насос ${pump.name} (Qмакс=${qMaxAtFreq.toFixed(0)} м³/сут) выходит за границу нулевого напора (H = 0 м). Выберите насос большей производительности.`
+    );
+  }
+  if (stagesCapped) {
+    warnings.push(
+      `Расчетное число ступеней превышает физический предел секционирования (${rawTotalStages} ст. / >8 секций). Напор одной ступени недостаточен для данной глубины — выберите более высоконапорный насос.`
+    );
+  } else if (numSections > 5 && !isHydraulicHeadZero) {
+    warnings.push(
+      `Компоновка содержит ${numSections} секций (${totalStages} ст., L=${pumpModuleLength.toFixed(1)} м), что усложняет спуск и монтаж. Рекомендуется типоразмер с более высоким напором ступени.`
+    );
+  }
   if (!isCasingCompatible) {
     warnings.push(`Насос D=${pump.outerDiam} мм не проходит в колонну Dвн=${dCasInMm.toFixed(1)} мм (мин. требование ${pump.minCasingID} мм).`);
   }
-  if (!isWithinOperatingRange) {
+  if (!isWithinOperatingRange && !isHydraulicHeadZero) {
     warnings.push(`Целевой дебит ${safeQ} м³/сут вне рекомендованного диапазона (${qMinAtFreq.toFixed(0)} - ${qMaxAtFreq.toFixed(0)} м³/сут).`);
   }
   if (shaftOverload) {
@@ -733,16 +768,6 @@ export function calculateOperatingPoint(
     well.tReservoir
   );
 
-  // Напор на закрытую задвижку при данной частоте
-  const shutoffHead = oper.fixedStages * a0 * Math.pow(kFreq, 2) * viscCorr.cH * approxIntake.gasHeadDegradationFactor;
-
-  const getPumpHead = (q: number) => {
-    if (q < 0) return shutoffHead;
-    const qEq = q / kFreq;
-    const h1 = (a0 - a1 * qEq - a2 * Math.pow(qEq, 2)) * Math.pow(kFreq, 2) * viscCorr.cH * approxIntake.gasHeadDegradationFactor;
-    return oper.fixedStages * Math.max(0, h1);
-  };
-
   const getChokeHeadLoss = (q: number) => {
     if (oper.chokeDiameterMm <= 0 || q <= 0) return 0;
     const dChokeM = oper.chokeDiameterMm / 1000;
@@ -775,31 +800,53 @@ export function calculateOperatingPoint(
     return hDynamicTvd + hWellheadNet + tubing.totalFriction + hChoke;
   };
 
-  const hSysAtZero = getSystemHead(0);
-  let actualQ = 0;
-  let actualHead = shutoffHead;
+  const solveForIntake = (gasFactor: number) => {
+    const getHeadAtQ = (q: number) => {
+      if (q < 0) return oper.fixedStages * a0 * Math.pow(kFreq, 2) * viscCorr.cH * gasFactor;
+      const qEq = q / kFreq;
+      const h1 = (a0 - a1 * qEq - a2 * Math.pow(qEq, 2)) * Math.pow(kFreq, 2) * viscCorr.cH * gasFactor;
+      return oper.fixedStages * Math.max(0, h1);
+    };
 
-  if (shutoffHead > hSysAtZero) {
-    let qLow = 0;
-    let qHigh = Math.max(20, pump.qMax * kFreq * 1.6);
+    const sHead = oper.fixedStages * a0 * Math.pow(kFreq, 2) * viscCorr.cH * gasFactor;
+    const hZero = getSystemHead(0);
+    let qRes = 0;
+    let hRes = sHead;
 
-    while (getPumpHead(qHigh) > getSystemHead(qHigh) && qHigh < 2500) {
-      qHigh += 40;
-    }
-
-    for (let iter = 0; iter < 40; iter++) {
-      const qMid = (qLow + qHigh) / 2;
-      const diff = getPumpHead(qMid) - getSystemHead(qMid);
-      if (diff > 0) {
-        qLow = qMid;
-      } else {
-        qHigh = qMid;
+    if (sHead > hZero) {
+      let qLow = 0;
+      let qHigh = Math.max(20, pump.qMax * kFreq * 1.6);
+      while (getHeadAtQ(qHigh) > getSystemHead(qHigh) && qHigh < 2500) {
+        qHigh += 40;
       }
+      for (let iter = 0; iter < 40; iter++) {
+        const qMid = (qLow + qHigh) / 2;
+        if (getHeadAtQ(qMid) - getSystemHead(qMid) > 0) qLow = qMid;
+        else qHigh = qMid;
+      }
+      qRes = Math.max(0, (qLow + qHigh) / 2);
+      hRes = getHeadAtQ(qRes);
     }
+    return { qRes, hRes, sHead };
+  };
 
-    actualQ = Math.max(0, (qLow + qHigh) / 2);
-    actualHead = getPumpHead(actualQ);
-  }
+  // Первое приближение по базовому динамическому уровню + уточнение по равновесному погружению
+  const pass1 = solveForIntake(approxIntake.gasHeadDegradationFactor);
+  const deltaP1 = pass1.qRes / Math.max(0.01, oper.productivityIndex);
+  const pWf1 = Math.max(0, well.pReservoir - deltaP1);
+  const dynTvd1 = well.hStatic * tvdFactor + ((well.pReservoir - pWf1) * 101325) / (rhoMix * G);
+  const intakePass2 = calculateIntakeConditions(
+    well.depthPump * tvdFactor,
+    dynTvd1,
+    oper.pAnnularOper,
+    rhoMix,
+    fluid,
+    well.tReservoir
+  );
+  const pass2 = solveForIntake(intakePass2.gasHeadDegradationFactor);
+  const actualQ = pass2.qRes;
+  const actualHead = pass2.hRes;
+  const shutoffHead = pass2.sHead;
 
   // Расчет установившихся эксплуатационных параметров в рабочей точке
   const deltaPActual = actualQ / Math.max(0.01, oper.productivityIndex);
