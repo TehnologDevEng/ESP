@@ -1,4 +1,4 @@
-import { PumpModel, MotorModel } from '../types/esp';
+import { PumpModel, MotorModel, HydroModel } from '../types/esp';
 
 export interface NTPumpRaw {
   name: string;
@@ -250,6 +250,8 @@ export function convertNTPumpToModel(p: NTPumpRaw, index: number): PumpModel {
     name: p.name,
     manufacturer: 'ООО «Новые Технологии»',
     series: seriesNum,
+    gabLabel: p.gab,
+    material: p.mat,
     outerDiam: p.diam,
     minCasingID: p.minCol,
     qNom: p.q50,
@@ -260,6 +262,8 @@ export function convertNTPumpToModel(p: NTPumpRaw, index: number): PumpModel {
     effNom: p.eff,
     stageLength: stageLengthMm,
     maxStagesPerSection: stagesCount,
+    maxPwrDir: p.maxPwrDir,
+    maxPwrSoft: p.maxPwrSoft,
     coeffH: [a0, Math.max(0.001, a1), Math.max(0.00001, a2)],
     coeffP: [b0, b1, b2],
     coeffEff: [c0, c1, c2]
@@ -279,6 +283,9 @@ export function convertNTMotorToModel(m: NTMotorRaw, index: number): MotorModel 
   return {
     id: `nt-motor-${m.name.toLowerCase().replace(/[^a-z0-9а-яё]/gi, '-')}-${index}`,
     name: m.name,
+    motorType: m.type,
+    tempMaxC: m.temp_max,
+    sections: m.sections,
     powerRatingKW: m.power,
     voltageV: voltage,
     currentA: current,
@@ -287,5 +294,21 @@ export function convertNTMotorToModel(m: NTMotorRaw, index: number): MotorModel 
     outerDiam: m.diam,
     lengthM: m.len,
     massKg: massKg
+  };
+}
+
+// Преобразование протекторов гидрозащиты НТ в HydroModel
+export function convertNTHydroToModel(h: NTHydroRaw, index: number): HydroModel {
+  const lengthM = h.diam >= 114 ? 2.1 : h.diam >= 103 ? 1.9 : 1.8;
+  const massKg = Math.round(lengthM * 40 + h.oil * 0.9);
+  return {
+    id: `nt-hydro-${h.name.toLowerCase().replace(/[^a-z0-9а-яё]/gi, '-')}-${index}`,
+    name: h.name,
+    outerDiam: h.diam,
+    axialLoadKg: h.axial_kg,
+    tempMaxC: h.temp,
+    oilVolumeL: h.oil,
+    lengthM,
+    massKg
   };
 }

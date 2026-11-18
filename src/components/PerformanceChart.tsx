@@ -275,9 +275,14 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
       ctx.stroke();
     }
 
-    // 7. Точка максимального КПД (BEP)
+    // 7. Точка максимального КПД (BEP) строго на кривой H(Q) при Q_ном
     const bepQ = pump.qNom * kF;
-    const bepHead = result.hStageReal * totalStages; // приблизительно
+    const [a0, a1, a2] = pump.coeffH;
+    const viscCorr = result.mixViscosity > 10
+      ? Math.max(0.70, 1 - 0.008 * (16.5 * Math.pow(result.mixViscosity, 0.5) / Math.pow(pump.qNom, 0.25)))
+      : 1.0;
+    const hBepStage = Math.max(0, (a0 - a1 * pump.qNom - a2 * Math.pow(pump.qNom, 2)) * Math.pow(kF, 2) * viscCorr * result.gasHeadDegradationFactor);
+    const bepHead = hBepStage * totalStages;
     const bepX = toX(bepQ);
     const bepY = toYHead(bepHead);
 
@@ -469,7 +474,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
 
         {/* Бейдж соответствия диапазону */}
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-slate-400">ОДР ({pump.qMin * (frequency / 50)} - {pump.qMax * (frequency / 50)} м³/сут):</span>
+          <span className="text-[10px] text-slate-400">ОДР ({Math.round(pump.qMin * (frequency / 50))} – {Math.round(pump.qMax * (frequency / 50))} м³/сут):</span>
           <span
             className={`px-2 py-0.5 rounded text-[10px] font-bold ${
               result.isWithinOperatingRange

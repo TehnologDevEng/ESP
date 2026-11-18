@@ -127,20 +127,29 @@ export const CalculationsAudit: React.FC<CalculationsAuditProps> = ({
               </div>
               <div className="space-y-1 text-xs font-mono">
                 <div className="flex justify-between text-slate-400">
-                  <span>H статический подъем:</span>
-                  <span className="text-slate-200">{Math.round(result.hStaticLift)} м</span>
+                  <span>H подъем (TVD):</span>
+                  <span className="text-slate-200">
+                    {Math.round(result.hStaticLift)} м
+                    {(well.inclinationDeg ?? 0) > 0 && (
+                      <span className="text-sky-400 ml-1">({well.inclinationDeg}°)</span>
+                    )}
+                  </span>
                 </div>
                 <div className="flex justify-between text-slate-400">
                   <span>H буферного давл. (Pуст):</span>
                   <span className="text-slate-200">{Math.round(result.hWellheadHead)} м</span>
                 </div>
                 <div className="flex justify-between text-slate-400">
-                  <span>H потерь трения:</span>
-                  <span className="text-slate-200">{Math.round(result.hFriction)} м</span>
+                  <span>Прочность вала насоса:</span>
+                  <span className={`font-bold ${result.shaftOverload ? 'text-rose-400' : 'text-emerald-400'}`}>
+                    {result.shaftLoadPercent.toFixed(0)}% ({Math.round(result.shaftLimitKW)} кВт)
+                  </span>
                 </div>
                 <div className="flex justify-between text-slate-400 border-t border-[#1e2738] pt-1 mt-1">
-                  <span>Коэфф. запаса (3%):</span>
-                  <span className="text-emerald-400 font-bold">+{(result.totalDynamicHead * 0.03).toFixed(1)} м</span>
+                  <span>Газ. фактор напора:</span>
+                  <span className={result.gasHeadDegradationFactor < 0.98 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
+                    ×{result.gasHeadDegradationFactor.toFixed(2)} ({result.freeGasIntakeFraction.toFixed(1)}% газа)
+                  </span>
                 </div>
               </div>
             </div>
@@ -216,6 +225,20 @@ export const CalculationsAudit: React.FC<CalculationsAuditProps> = ({
                 </div>
               </div>
             </div>
+
+            {result.warnings.length > 0 && (
+              <div className="md:col-span-2 lg:col-span-4 bg-amber-950/30 border border-amber-800/50 rounded-xl p-3 space-y-1">
+                <div className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>Замечания и предупреждения по текущей компоновке ({result.warnings.length}):</span>
+                </div>
+                <ul className="space-y-0.5 text-[11px] text-amber-200/90 pl-5 list-disc">
+                  {result.warnings.map((w, idx) => (
+                    <li key={idx}>{w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
 
@@ -328,22 +351,32 @@ export const CalculationsAudit: React.FC<CalculationsAuditProps> = ({
                 </p>
               </div>
 
-              {/* Рекомендация 3: Энергетика кабеля */}
+              {/* Рекомендация 3: Прочность вала, терморежим и кабель */}
               <div className="bg-[#141b27] p-3 rounded-lg border border-[#243044] space-y-1.5">
                 <div className="flex items-center gap-1.5 font-bold text-emerald-400">
                   <Zap className="w-4 h-4" />
-                  Энергоэффективность кабеля
+                  Механика вала, ПЭД и кабель
                 </div>
                 <p className="text-slate-300 text-[11px] leading-relaxed">
-                  {result.cableVoltageDropPercent > 6 ? (
+                  {result.shaftOverload ? (
+                    <span className="text-rose-300">
+                      Мощность на валу ({result.fullStringShaftPowerKW.toFixed(1)} кВт) превышает предел прочности вала ({result.shaftLimitKW} кВт).
+                      Перейдите на больший габарит насоса или снизьте частоту ЧРП.
+                    </span>
+                  ) : result.motorThermalOverload ? (
+                    <span className="text-amber-300">
+                      Высокая температура пласта ({well.tReservoir}°C) для {motor.name} (предел {motor.tempMaxC ?? 130}°C).
+                      Переключите тип двигателя на <strong>ВПЭД (до 230°C)</strong> во вкладке «ЧРП/Кабель».
+                    </span>
+                  ) : result.cableVoltageDropPercent > 6 ? (
                     <span>
                       Потери напряжения в кабеле сечением {electrical.cableSection} мм² составляют {result.cableVoltageDropPercent.toFixed(1)}%.
-                      Рекомендуется увеличить сечение до <strong>35 мм²</strong> для снижения тепловых потерь и нагрева ствола скважины.
+                      Рекомендуется увеличить сечение до <strong>35 мм²</strong> для снижения тепловых потерь.
                     </span>
                   ) : (
                     <span>
-                      Кабель {electrical.cableSection} мм² обеспечивает экономичное падение напряжения ({result.cableVoltageDropPercent.toFixed(1)}% &lt; 6%).
-                      Нагрев изоляции в пределах паспортных норм.
+                      Запас прочности вала ({result.shaftLoadPercent.toFixed(0)}%), термостойкость {motor.name} и кабель {electrical.cableSection} мм²
+                      (падение {result.cableVoltageDropPercent.toFixed(1)}%) в пределах нормы.
                     </span>
                   )}
                 </p>

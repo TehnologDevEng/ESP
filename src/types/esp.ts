@@ -6,17 +6,18 @@ export interface WellParameters {
   wellName: string;            // Номер / наименование скважины
   field: string;               // Месторождение / куст
   qTarget: number;             // Целевой дебит жидкости, м³/сут
-  depthPump: number;           // Глубина спуска насоса (приема), м
-  hDynamic: number;            // Динамический уровень жидкости от устья, м
-  hStatic: number;             // Статический уровень, м
-  depthWell: number;           // Искусственный забой, м
-  perfTop: number;             // Кровля интервала перфорации, м
-  perfBottom: number;          // Подошва интервала перфорации, м
+  depthPump: number;           // Глубина спуска насоса по стволу (MD), м
+  hDynamic: number;            // Динамический уровень жидкости по стволу (MD), м
+  hStatic: number;             // Статический уровень по стволу (MD), м
+  depthWell: number;           // Искусственный забой по стволу (MD), м
+  perfTop: number;             // Кровля интервала перфорации (MD), м
+  perfBottom: number;          // Подошва интервала перфорации (MD), м
   pBuf: number;                // Буферное давление на устье, атм (кгс/см²)
   pAnnular: number;            // Затрубное давление, атм
   pReservoir: number;          // Пластовое давление, атм
   tReservoir: number;          // Пластовая температура, °C
   tWellhead: number;           // Температура на устье, °C
+  inclinationDeg?: number;     // Средний зенитный угол ствола, град. (0 = вертикальная)
 }
 
 export interface FluidProperties {
@@ -49,8 +50,10 @@ export interface ElectricalParams {
 export interface PumpModel {
   id: string;
   name: string;
-  manufacturer: string;        // Борец, Новомет, Алнас, Римэра
+  manufacturer: string;        // Борец, Новомет, Алнас, Римэра, НТ
   series: number;              // Габарит: 2А (69 мм), 3 (86 мм), 5 (92 мм), 5А (103 мм), 6 (117 мм)
+  gabLabel?: string;           // Код габарита: '2A' | '3' | '5' | '5A' | '6' | '7A'
+  material?: string;           // Исполнение рабочих органов: 'нирезист' | 'ПКМ' | 'винт'
   outerDiam: number;           // Наружный диаметр насоса, мм
   minCasingID: number;         // Минимальный внутренний диаметр колонны, мм
   qNom: number;                // Номинальная подача на 50 Гц, м³/сут
@@ -61,6 +64,8 @@ export interface PumpModel {
   effNom: number;              // Максимальный КПД ступени, %
   stageLength: number;         // Монтажная длина одной ступени, мм
   maxStagesPerSection: number; // Максимальное число ступеней в одном корпусе (секции)
+  maxPwrDir?: number;          // Предельная мощность вала при прямом пуске, кВт
+  maxPwrSoft?: number;         // Предельная мощность вала при ЧРП/мягком пуске, кВт
   // Коэффициенты аппроксимации кривых 2-го порядка: H(Q) = a0 - a1*Q - a2*Q^2
   coeffH: [number, number, number];
   // Коэффициенты мощности P(Q) = b0 + b1*Q + b2*Q^2
@@ -72,6 +77,9 @@ export interface PumpModel {
 export interface MotorModel {
   id: string;
   name: string;
+  motorType?: 'пэд' | 'впэд';  // Асинхронный ПЭД или вентильный ВПЭД
+  tempMaxC?: number;           // Максимальная рабочая температура обмоток, °C
+  sections?: number;           // Число секций двигателя
   powerRatingKW: number;       // Номинальная мощность, кВт
   voltageV: number;            // Номинальное напряжение, В
   currentA: number;            // Номинальный ток, А
@@ -82,18 +90,37 @@ export interface MotorModel {
   massKg: number;              // Масса двигателя, кг
 }
 
+export interface HydroModel {
+  id: string;
+  name: string;
+  outerDiam: number;           // Диаметр протектора, мм
+  axialLoadKg: number;         // Допустимая осевая нагрузка пяты, кгс
+  tempMaxC: number;            // Макс. температура, °C
+  oilVolumeL: number;          // Объем масла, л
+  lengthM: number;             // Длина модуля, м
+  massKg: number;              // Масса модуля, кг
+}
+
+export type MotorPreference = 'auto' | 'пэд' | 'впэд';
+
 export interface CalculationResult {
   pump: PumpModel;
   motor: MotorModel;
+  hydro: HydroModel;
   
   // Гидравлика пластовой смеси
   mixDensity: number;          // Плотность смеси, кг/м³
   mixViscosity: number;        // Эффективная вязкость смеси, сП
   
+  // Геометрия ствола (MD -> TVD)
+  tvdFactor: number;           // cos(зенитного угла)
+  tvdDynamicM: number;         // Динамический уровень по вертикали (TVD), м
+  tvdPumpM: number;            // Глубина спуска по вертикали (TVD), м
+
   // Напоры и потери
-  hStaticLift: number;         // Геометрический подъем (H_дин), м
+  hStaticLift: number;         // Геометрический подъем (H_дин TVD), м
   hWellheadHead: number;       // Напор противодавления устья, м
-  hFriction: number;           // Потери на трение в НКТ, м
+  hFriction: number;           // Потери на трение в НКТ (по MD), м
   flowVelocityTubing: number;  // Скорость потока в НКТ, м/с
   reynoldsTubing: number;      // Число Рейнольдса в НКТ
   frictionFactor: number;      // Коэффициент сопротивления Дарси
@@ -117,19 +144,26 @@ export interface CalculationResult {
   fullStringEfficiency: number; // КПД насоса в рабочей точке, %
   shutoffHead: number;         // Напор на закрытую задвижку (при Q=0), м
   dischargePressureAtm: number; // Давление нагнетания насоса, атм
+
+  // Прочность вала насоса
+  shaftLimitKW: number;        // Предельная мощность вала насоса, кВт
+  shaftLoadPercent: number;    // Загрузка вала по пределу прочности, %
+  shaftOverload: boolean;      // Превышение предельной мощности вала
   
   // Условия на приеме насоса
-  submergenceMeters: number;   // Погружение под динамический уровень, м
+  submergenceMeters: number;   // Погружение под динамический уровень (TVD), м
   intakePressureAtm: number;   // Давление на приеме насоса, атм
   freeGasIntakeFraction: number; // Объемная доля свободного газа на приеме, %
+  gasHeadDegradationFactor: number; // Коэффициент снижения напора от остаточного газа
   gasSeparatorRequired: boolean; // Нужен ли газосепаратор
   gasSeparatorType: 'НЕТ' | 'МГ (Сепаратор)' | 'МГД (Диспергатор)' | 'Мультифазный';
   
-  // Охлаждение ПЭД
+  // Охлаждение ПЭД и терморежим
   coolingVelocityMs: number;   // Скорость восходящего потока вдоль двигателя, м/с
   coolingStatus: 'OPTIMAL' | 'ACCEPTABLE' | 'WARNING' | 'CRITICAL';
   coolingMessage: string;
   shroudRequired: boolean;     // Требуется ли кожух охлаждения
+  motorThermalOverload: boolean; // Превышение макс. температуры ПЭД
   
   // Электрика и двигатель
   motorLoadPercent: number;    // Коэффициент загрузки двигателя, %
@@ -143,6 +177,7 @@ export interface CalculationResult {
   // Оценка соответствия (Match Index)
   matchScore: number;          // Индекс качества подбора, 0 - 100%
   isWithinOperatingRange: boolean; // Внутри рекомендованного диапазона подачи
+  isCasingCompatible: boolean; // Проходит по внутреннему диаметру колонны
   warnings: string[];          // Предупреждения и рекомендации
 }
 
@@ -205,4 +240,18 @@ export interface RegulationPoint {
   coolingVelocityMs: number;   // Скорость охлаждения, м/с
   isWithinODR: boolean;
   isMotorOverloaded: boolean;
+}
+
+export interface SavedWellScenario {
+  id: string;
+  name: string;
+  savedAt: string;
+  well: WellParameters;
+  fluid: FluidProperties;
+  completion: CompletionGeometry;
+  electrical: ElectricalParams;
+  motorPreference: MotorPreference;
+  manualMotorId: string;
+  manualHydroId: string;
+  selectedPumpId: string;
 }

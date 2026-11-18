@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
-import { WellParameters, FluidProperties, CompletionGeometry, ElectricalParams } from '../types/esp';
-import { Settings2, Droplet, Cylinder, Zap, RotateCcw, HelpCircle } from 'lucide-react';
+import {
+  WellParameters,
+  FluidProperties,
+  CompletionGeometry,
+  ElectricalParams,
+  MotorPreference,
+  MotorModel,
+  HydroModel
+} from '../types/esp';
+import { MOTOR_DATABASE, HYDRO_DATABASE } from '../data/motors';
+import { getTvdFactor } from '../utils/calculations';
+import { Settings2, Droplet, Cylinder, Zap, RotateCcw } from 'lucide-react';
 import { SmartNumberInput } from './SmartNumberInput';
 
 interface SidebarInputsProps {
@@ -8,10 +18,18 @@ interface SidebarInputsProps {
   fluid: FluidProperties;
   completion: CompletionGeometry;
   electrical: ElectricalParams;
+  motorPreference: MotorPreference;
+  manualMotorId: string;
+  manualHydroId: string;
+  activeMotor: MotorModel;
+  activeHydro: HydroModel;
   onChangeWell: (well: WellParameters) => void;
   onChangeFluid: (fluid: FluidProperties) => void;
   onChangeCompletion: (comp: CompletionGeometry) => void;
   onChangeElectrical: (elec: ElectricalParams) => void;
+  onChangeMotorPreference: (pref: MotorPreference) => void;
+  onChangeManualMotorId: (id: string) => void;
+  onChangeManualHydroId: (id: string) => void;
 }
 
 type TabKey = 'well' | 'fluid' | 'completion' | 'electrical';
@@ -21,10 +39,18 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
   fluid,
   completion,
   electrical,
+  motorPreference,
+  manualMotorId,
+  manualHydroId,
+  activeMotor,
+  activeHydro,
   onChangeWell,
   onChangeFluid,
   onChangeCompletion,
-  onChangeElectrical
+  onChangeElectrical,
+  onChangeMotorPreference,
+  onChangeManualMotorId,
+  onChangeManualHydroId
 }) => {
   const [activeTab, setActiveTab] = useState<TabKey>('well');
 
@@ -43,6 +69,9 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
   const updateElectrical = (field: keyof ElectricalParams, value: any) => {
     onChangeElectrical({ ...electrical, [field]: value });
   };
+
+  const dCasInMm = completion.casingOuterDiam - 2 * completion.casingWallThickness;
+  const tvdFactor = getTvdFactor(well.inclinationDeg);
 
   return (
     <div className="bg-[#131924] border border-[#243044] rounded-xl overflow-hidden shadow-xl flex flex-col h-full">
@@ -101,9 +130,31 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
       <div className="p-4 flex-1 overflow-y-auto space-y-4">
         {/* ===================== ВКЛАДКА: СКВАЖИНА ===================== */}
         {activeTab === 'well' && (
-          <div className="space-y-3.5">
+          <div className="space-y-3">
             <div className="text-[11px] font-bold text-blue-400 uppercase tracking-wider">
               Технологические параметры скважины
+            </div>
+
+            {/* Наименование скважины и месторождения */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-slate-400 block mb-0.5">Скважина</label>
+                <input
+                  type="text"
+                  value={well.wellName}
+                  onChange={(e) => updateWell('wellName', e.target.value)}
+                  className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 block mb-0.5">Месторождение</label>
+                <input
+                  type="text"
+                  value={well.field}
+                  onChange={(e) => updateWell('field', e.target.value)}
+                  className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
             </div>
 
             {/* Целевой дебит жидкости */}
@@ -229,6 +280,59 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
                   min={0}
                   max={6000}
                   className="w-full bg-[#0b0e14] border border-[#243044] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Пластовое давление и зенитный угол (MD/TVD) */}
+            <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#1e2738]">
+              <div>
+                <label className="text-[11px] text-slate-400 block mb-1">P пластовое</label>
+                <SmartNumberInput
+                  value={well.pReservoir}
+                  onChange={(val) => updateWell('pReservoir', val)}
+                  min={10}
+                  max={600}
+                  unit="атм"
+                />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] text-slate-400">Зенитный угол</label>
+                  <span className="text-[10px] font-mono text-sky-400">
+                    TVD {Math.round(well.depthPump * tvdFactor)} м
+                  </span>
+                </div>
+                <SmartNumberInput
+                  value={well.inclinationDeg ?? 0}
+                  onChange={(val) => updateWell('inclinationDeg', val)}
+                  min={0}
+                  max={75}
+                  unit="°"
+                />
+              </div>
+            </div>
+
+            {/* Температуры: пласта и устья */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[11px] text-slate-400 block mb-1">T пласта</label>
+                <SmartNumberInput
+                  value={well.tReservoir}
+                  onChange={(val) => updateWell('tReservoir', val)}
+                  min={5}
+                  max={220}
+                  unit="°C"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-slate-400 block mb-1">T на устье</label>
+                <SmartNumberInput
+                  value={well.tWellhead}
+                  onChange={(val) => updateWell('tWellhead', val)}
+                  min={-30}
+                  max={90}
+                  unit="°C"
                 />
               </div>
             </div>
@@ -523,6 +627,79 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
                 <option value="КПбП-120">КПбП-120 (Стандартный, до 120°C)</option>
                 <option value="КПсТБП-150">КПсТБП-150 (Термостойкий, до 150°C)</option>
               </select>
+            </div>
+
+            {/* Выбор типа и модели двигателя ПЭД / ВПЭД */}
+            <div className="pt-2 border-t border-[#1e2738] space-y-2.5">
+              <div className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
+                Двигатель (ПЭД / ВПЭД) и гидрозащита
+              </div>
+
+              <div className="grid grid-cols-3 gap-1.5">
+                {([
+                  { key: 'auto', label: 'Авто' },
+                  { key: 'пэд', label: 'ПЭД (130°C)' },
+                  { key: 'впэд', label: 'ВПЭД (230°C)' }
+                ] as { key: MotorPreference; label: string }[]).map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => {
+                      onChangeMotorPreference(item.key);
+                      onChangeManualMotorId('');
+                    }}
+                    className={`py-1.5 px-1 rounded-lg border text-[10px] font-semibold transition-all ${
+                      motorPreference === item.key && !manualMotorId
+                        ? 'border-emerald-500 bg-emerald-600/25 text-emerald-300'
+                        : 'border-[#243044] bg-[#0b0e14] text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between text-[11px] mb-1">
+                  <label className="text-slate-400">Модель двигателя</label>
+                  <span className="font-mono text-[10px] text-emerald-400">
+                    {manualMotorId ? 'Ручной' : 'Автоподбор'}
+                  </span>
+                </div>
+                <select
+                  value={manualMotorId}
+                  onChange={(e) => onChangeManualMotorId(e.target.value)}
+                  className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-white focus:outline-none focus:border-blue-500"
+                >
+                  <option value="">Авто: {activeMotor.name} ({activeMotor.powerRatingKW} кВт, D{activeMotor.outerDiam})</option>
+                  {MOTOR_DATABASE.filter(m => m.outerDiam <= dCasInMm - 4).map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} · {m.powerRatingKW} кВт · D{m.outerDiam} · до {m.tempMaxC ?? 130}°C
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between text-[11px] mb-1">
+                  <label className="text-slate-400">Протектор гидрозащиты</label>
+                  <span className="font-mono text-[10px] text-sky-400">
+                    {manualHydroId ? 'Ручной' : 'Авто'}
+                  </span>
+                </div>
+                <select
+                  value={manualHydroId}
+                  onChange={(e) => onChangeManualHydroId(e.target.value)}
+                  className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-white focus:outline-none focus:border-blue-500"
+                >
+                  <option value="">Авто: {activeHydro.name} (D{activeHydro.outerDiam}, {activeHydro.axialLoadKg} кгс)</option>
+                  {HYDRO_DATABASE.filter(h => h.outerDiam <= dCasInMm - 4).map((h) => (
+                    <option key={h.id} value={h.id}>
+                      {h.name} · D{h.outerDiam} · {h.axialLoadKg} кгс · до {h.tempMaxC}°C
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         )}

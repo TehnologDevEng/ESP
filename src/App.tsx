@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { PRESETS, WellPreset } from './data/presets';
 import { PUMP_DATABASE } from './data/pumps';
 import { evaluatePumpModel } from './utils/calculations';
@@ -11,36 +11,152 @@ import { CalculationsAudit } from './components/CalculationsAudit';
 import { OperationModeView } from './components/OperationModeView';
 import { ReportModal } from './components/ReportModal';
 import { EquipmentCatalogModal } from './components/EquipmentCatalogModal';
-import { WellParameters, FluidProperties, CompletionGeometry, ElectricalParams, ApplicationMode } from './types/esp';
+import {
+  WellParameters,
+  FluidProperties,
+  CompletionGeometry,
+  ElectricalParams,
+  ApplicationMode,
+  MotorPreference,
+  SavedWellScenario
+} from './types/esp';
+
+const SAVED_WELLS_STORAGE_KEY = 'esp_expert_saved_wells_v1';
+
+function loadSavedWells(): SavedWellScenario[] {
+  try {
+    const raw = localStorage.getItem(SAVED_WELLS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 export default function App() {
   // Режим работы приложения: Подбор оборудования (CAD) или Режим эксплуатации (ЧРП)
   const [appMode, setAppMode] = useState<ApplicationMode>('sizing');
 
   // Инициализация состояний из базового пресета
+  const [activeScenarioId, setActiveScenarioId] = useState<string>(PRESETS[0].id);
   const [well, setWell] = useState<WellParameters>(PRESETS[0].well);
   const [fluid, setFluid] = useState<FluidProperties>(PRESETS[0].fluid);
   const [completion, setCompletion] = useState<CompletionGeometry>(PRESETS[0].completion);
   const [electrical, setElectrical] = useState<ElectricalParams>(PRESETS[0].electrical);
 
+  // Предпочтение типа двигателя и ручной подбор ПЭД / Гидрозащиты
+  const [motorPreference, setMotorPreference] = useState<MotorPreference>('auto');
+  const [manualMotorId, setManualMotorId] = useState<string>('');
+  const [manualHydroId, setManualHydroId] = useState<string>('');
+
   const [selectedPumpId, setSelectedPumpId] = useState<string>(PUMP_DATABASE[0]?.id || '');
   const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
   const [isCatalogOpen, setIsCatalogOpen] = useState<boolean>(false);
 
+  // Сохраненные пользователем скважины
+  const [savedWells, setSavedWells] = useState<SavedWellScenario[]>(() => loadSavedWells());
+  const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'ok' | 'err' } | null>(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SAVED_WELLS_STORAGE_KEY, JSON.stringify(savedWells));
+    } catch {
+      // Игнорируем переполнение localStorage в приватном режиме
+    }
+  }, [savedWells]);
+
+  const showStatus = (text: string, type: 'ok' | 'err' = 'ok') => {
+    setStatusMessage({ text, type });
+    window.setTimeout(() => {
+      setStatusMessage(prev => (prev?.text === text ? null : prev));
+    }, 2800);
+  };
+
   // Обработчик выбора готового сценария скважины
   const handleSelectPreset = (preset: WellPreset) => {
+    setActiveScenarioId(preset.id);
     setWell(preset.well);
     setFluid(preset.fluid);
     setCompletion(preset.completion);
     setElectrical(preset.electrical);
+    setMotorPreference('auto');
+    setManualMotorId('');
+    setManualHydroId('');
+  };
+
+  // Обработчик выбора сохраненной скважины
+  const handleSelectSavedWell = (scenario: SavedWellScenario) => {
+    setActiveScenarioId(scenario.id);
+    setWell(scenario.well);
+    setFluid(scenario.fluid);
+    setCompletion(scenario.completion);
+    setElectrical(scenario.electrical);
+    setMotorPreference(scenario.motorPreference || 'auto');
+    setManualMotorId(scenario.manualMotorId || '');
+    setManualHydroId(scenario.manualHydroId || '');
+    if (scenario.selectedPumpId) {
+      setSelectedPumpId(scenario.selectedPumpId);
+    }
+  };
+
+  // Сохранить или обновить текущую скважину в localStorage
+  const handleSaveCurrentWell = () => {
+    const label = `Скв. ${well.wellName || 'Б/Н'} · ${well.field || 'Месторождение'}`;
+    const existing = savedWells.find(s => s.id === activeScenarioId);
+
+    if (existing) {
+      const updated: SavedWellScenario = {
+        ...existing,
+        name: label,
+        savedAt: new Date().toISOString(),
+        well,
+        fluid,
+        completion,
+        electrical,
+        motorPreference,
+        manualMotorId,
+        manualHydroId,
+        selectedPumpId: activeResult.pump.id
+      };
+      setSavedWells(prev => prev.map(s => (s.id === existing.id ? updated : s)));
+      showStatus('Скважина обновлена');
+    } else {
+      const newScenario: SavedWellScenario = {
+        id: `saved:${Date.now()}`,
+        name: label,
+        savedAt: new Date().toISOString(),
+        well,
+        fluid,
+        completion,
+        electrical,
+        motorPreference,
+        manualMotorId,
+        manualHydroId,
+        selectedPumpId: activeResult.pump.id
+      };
+      setSavedWells(prev => [newScenario, ...prev]);
+      setActiveScenarioId(newScenario.id);
+      showStatus('Сохранено в «Мои скважины»');
+    }
+  };
+
+  const handleDeleteSavedWell = (id: string) => {
+    setSavedWells(prev => prev.filter(s => s.id !== id));
+    setActiveScenarioId(PRESETS[0].id);
+    showStatus('Скважина удалена');
   };
 
   // Расчет всех кандидатов из базы насосов
   const candidates = useMemo(() => {
     return PUMP_DATABASE.map(pump =>
-      evaluatePumpModel(pump, well, fluid, completion, electrical)
+      evaluatePumpModel(pump, well, fluid, completion, electrical, {
+        motorPreference,
+        manualMotorId: manualMotorId || undefined,
+        manualHydroId: manualHydroId || undefined
+      })
     ).sort((a, b) => b.matchScore - a.matchScore);
-  }, [well, fluid, completion, electrical]);
+  }, [well, fluid, completion, electrical, motorPreference, manualMotorId, manualHydroId]);
 
   // Активный выбранный вариант
   const activeResult = useMemo(() => {
@@ -50,21 +166,84 @@ export default function App() {
     );
   }, [candidates, selectedPumpId]);
 
+  // Экспорт проекта в JSON
+  const handleExportJson = () => {
+    const payload = {
+      version: 'esp-expert-10.4',
+      exportedAt: new Date().toISOString(),
+      well,
+      fluid,
+      completion,
+      electrical,
+      motorPreference,
+      manualMotorId,
+      manualHydroId,
+      selectedPumpId: activeResult.pump.id
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const safeName = (well.wellName || 'well').replace(/[^\wа-яА-ЯёЁ-]+/g, '_');
+    a.href = url;
+    a.download = `esp-project-${safeName}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showStatus('Проект выгружен в JSON');
+  };
+
+  // Импорт проекта из JSON
+  const handleImportJson = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result || '{}'));
+        if (!parsed.well || !parsed.fluid || !parsed.completion || !parsed.electrical) {
+          showStatus('Некорректный формат файла JSON', 'err');
+          return;
+        }
+        setWell(parsed.well);
+        setFluid(parsed.fluid);
+        setCompletion(parsed.completion);
+        setElectrical(parsed.electrical);
+        setMotorPreference(parsed.motorPreference || 'auto');
+        setManualMotorId(parsed.manualMotorId || '');
+        setManualHydroId(parsed.manualHydroId || '');
+        if (parsed.selectedPumpId) {
+          setSelectedPumpId(parsed.selectedPumpId);
+        }
+        setActiveScenarioId('__imported__');
+        showStatus('Проект загружен из JSON');
+      } catch {
+        showStatus('Ошибка чтения JSON файла', 'err');
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="min-h-screen bg-[#0b0e14] text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
       {/* Главная навигационная полоса */}
       <Header
-        well={well}
         activeResult={activeResult}
         appMode={appMode}
+        activeScenarioId={activeScenarioId}
+        savedWells={savedWells}
+        statusMessage={statusMessage}
         onChangeAppMode={setAppMode}
         onSelectPreset={handleSelectPreset}
+        onSelectSavedWell={handleSelectSavedWell}
+        onSaveCurrentWell={handleSaveCurrentWell}
+        onDeleteSavedWell={handleDeleteSavedWell}
+        onExportJson={handleExportJson}
+        onImportJson={handleImportJson}
         onOpenReport={() => setIsReportOpen(true)}
         onOpenCatalog={() => setIsCatalogOpen(true)}
       />
 
       {/* Основная рабочая область CAD интерфейса */}
-      <main className="flex-1 p-3 md:p-4 max-w-[1720px] w-full mx-auto space-y-4">
+      <main className="no-print flex-1 p-3 md:p-4 max-w-[1720px] w-full mx-auto space-y-4">
         {appMode === 'sizing' ? (
           <>
             {/* Верхняя трехколоночная компоновка */}
@@ -76,10 +255,18 @@ export default function App() {
                   fluid={fluid}
                   completion={completion}
                   electrical={electrical}
+                  motorPreference={motorPreference}
+                  manualMotorId={manualMotorId}
+                  manualHydroId={manualHydroId}
+                  activeMotor={activeResult.motor}
+                  activeHydro={activeResult.hydro}
                   onChangeWell={setWell}
                   onChangeFluid={setFluid}
                   onChangeCompletion={setCompletion}
                   onChangeElectrical={setElectrical}
+                  onChangeMotorPreference={setMotorPreference}
+                  onChangeManualMotorId={setManualMotorId}
+                  onChangeManualHydroId={setManualHydroId}
                 />
               </div>
 
@@ -139,8 +326,7 @@ export default function App() {
       </main>
 
       {/* Инженерный CAD-футер приложения */}
-
-      <footer className="mt-6 bg-[#111722] border-t border-[#243044] text-xs text-slate-400">
+      <footer className="no-print mt-6 bg-[#111722] border-t border-[#243044] text-xs text-slate-400">
         <div className="max-w-[1720px] mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
             <div className="flex items-center gap-2">

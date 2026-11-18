@@ -10,13 +10,19 @@ interface WellSchematicProps {
 
 export const WellSchematic: React.FC<WellSchematicProps> = ({ result, well, completion }) => {
   const [viewMode, setViewMode] = useState<'profile' | 'detail'>('profile');
+  const [zoomBottomhole, setZoomBottomhole] = useState<boolean>(false);
   const [hoveredPart, setHoveredPart] = useState<string | null>(null);
 
-  const { pump, motor, totalStages, numSections } = result;
+  const { pump, motor, hydro, totalStages, numSections } = result;
 
-  // Расчет относительных координат для схемы скважины
-  // Общая глубина отображения (до забоя с запасом)
-  const maxDepth = Math.max(well.depthWell, well.perfBottom + 80, well.depthPump + 120);
+  // Диапазон глубин отображения (весь ствол или зум на призабойную зону)
+  const fullMaxDepth = Math.max(well.depthWell, well.perfBottom + 80, well.depthPump + 120);
+  const minDepth = zoomBottomhole
+    ? Math.max(0, Math.min(well.hDynamic - 120, well.depthPump - 220))
+    : 0;
+  const maxDepth = zoomBottomhole
+    ? Math.max(minDepth + 350, Math.max(well.depthWell + 30, well.perfBottom + 60, well.depthPump + 120))
+    : fullMaxDepth;
 
   // Функция перевода глубины в метрах в пиксели SVG
   const svgHeight = 620;
@@ -26,7 +32,8 @@ export const WellSchematic: React.FC<WellSchematicProps> = ({ result, well, comp
   const drawableHeight = svgHeight - topOffset - bottomOffset;
 
   const depthToY = (depthM: number) => {
-    return topOffset + (Math.max(0, Math.min(maxDepth, depthM)) / maxDepth) * drawableHeight;
+    const clamped = Math.max(minDepth, Math.min(maxDepth, depthM));
+    return topOffset + ((clamped - minDepth) / Math.max(1, maxDepth - minDepth)) * drawableHeight;
   };
 
   // Вычисляемые координаты
@@ -35,12 +42,20 @@ export const WellSchematic: React.FC<WellSchematicProps> = ({ result, well, comp
   const yStaticLevel = depthToY(well.hStatic);
   const yDynamicLevel = depthToY(well.hDynamic);
   const yPumpIntake = depthToY(well.depthPump);
-  const yCheckValve = depthToY(Math.max(10, well.depthPump - 25)); // 25м выше насоса
-  const yMotorBottom = depthToY(well.depthPump + result.totalStringLength);
+  const yCheckValve = depthToY(Math.max(minDepth + 10, well.depthPump - 25));
   const yPerfTop = depthToY(well.perfTop);
   const yPerfBottom = depthToY(well.perfBottom);
   const yCasingShoe = depthToY(completion.casingShoeDepth);
   const yTotalDepth = depthToY(well.depthWell);
+
+  // Анти-наложение выносок справа (Hстат, Hдин, Прием)
+  const labelHStaticY = yStaticLevel;
+  const labelHDynamicY = Math.abs(yDynamicLevel - labelHStaticY) < 14
+    ? labelHStaticY + 14
+    : yDynamicLevel;
+  const labelIntakeY = Math.abs(yPumpIntake - labelHDynamicY) < 16
+    ? labelHDynamicY + 16
+    : yPumpIntake;
 
   // Координаты по ширине
   const centerX = 120;
@@ -121,8 +136,8 @@ export const WellSchematic: React.FC<WellSchematicProps> = ({ result, well, comp
               </defs>
 
               {/* Фоновая масштабная сетка глубин */}
-              {[500, 1000, 1500, 2000, 2500].map(depth => {
-                if (depth > maxDepth) return null;
+              {[500, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000, 3500].map(depth => {
+                if (depth < minDepth || depth > maxDepth) return null;
                 const y = depthToY(depth);
                 return (
                   <g key={depth} opacity="0.25">
@@ -134,34 +149,38 @@ export const WellSchematic: React.FC<WellSchematicProps> = ({ result, well, comp
                 );
               })}
 
-              {/* Устьевая арматура (АФК) */}
-              <g transform={`translate(${centerX}, ${yWellhead - 26})`}>
-                <rect x="-36" y="0" width="72" height="12" fill="#334155" stroke="#64748b" strokeWidth="1.5" rx="2" />
-                <rect x="-14" y="-12" width="28" height="12" fill="#1e293b" stroke="#64748b" strokeWidth="1" />
-                {/* Лубрикаторная задвижка */}
-                <circle cx="0" cy="-15" r="4" fill="#0284c7" />
-                {/* Боковые выкидные линии устья */}
-                <line x1="-36" y1="6" x2="-52" y2="6" stroke="#64748b" strokeWidth="3" />
-                <line x1="36" y1="6" x2="52" y2="6" stroke="#64748b" strokeWidth="3" />
-                <text x="0" y="24" textAnchor="middle" fill="#94a3b8" fontSize="8" fontWeight="bold">
-                  Устье (0 м)
-                </text>
-              </g>
+              {/* Устьевая арматура (АФК) — только в полном масштабе */}
+              {!zoomBottomhole && (
+                <g transform={`translate(${centerX}, ${yWellhead - 26})`}>
+                  <rect x="-36" y="0" width="72" height="12" fill="#334155" stroke="#64748b" strokeWidth="1.5" rx="2" />
+                  <rect x="-14" y="-12" width="28" height="12" fill="#1e293b" stroke="#64748b" strokeWidth="1" />
+                  <circle cx="0" cy="-15" r="4" fill="#0284c7" />
+                  <line x1="-36" y1="6" x2="-52" y2="6" stroke="#64748b" strokeWidth="3" />
+                  <line x1="36" y1="6" x2="52" y2="6" stroke="#64748b" strokeWidth="3" />
+                  <text x="0" y="24" textAnchor="middle" fill="#94a3b8" fontSize="8" fontWeight="bold">
+                    Устье (0 м)
+                  </text>
+                </g>
+              )}
 
               {/* Кондуктор */}
-              <rect
-                x={centerX - conductorHalfW}
-                y={yWellhead}
-                width={conductorHalfW * 2}
-                height={yConductor - yWellhead}
-                fill="none"
-                stroke="#475569"
-                strokeWidth="2"
-                strokeDasharray="4,2"
-              />
-              <text x={centerX - conductorHalfW - 4} y={yConductor - 4} textAnchor="end" fill="#64748b" fontSize="7.5">
-                Кондуктор {completion.conductorDepth} м
-              </text>
+              {completion.conductorDepth > minDepth && (
+                <>
+                  <rect
+                    x={centerX - conductorHalfW}
+                    y={yWellhead}
+                    width={conductorHalfW * 2}
+                    height={Math.max(0, yConductor - yWellhead)}
+                    fill="none"
+                    stroke="#475569"
+                    strokeWidth="2"
+                    strokeDasharray="4,2"
+                  />
+                  <text x={centerX - conductorHalfW - 4} y={yConductor - 4} textAnchor="end" fill="#64748b" fontSize="7.5">
+                    Кондуктор {completion.conductorDepth} м
+                  </text>
+                </>
+              )}
 
               {/* Цементное кольцо за эксплуатационной колонной */}
               <rect
@@ -200,20 +219,25 @@ export const WellSchematic: React.FC<WellSchematicProps> = ({ result, well, comp
               />
 
               {/* Статический уровень жидкости (пунктир) */}
-              <line
-                x1={centerX - casingHalfW}
-                y1={yStaticLevel}
-                x2={centerX + casingHalfW}
-                y2={yStaticLevel}
-                stroke="#38bdf8"
-                strokeWidth="1.5"
-                strokeDasharray="3,3"
-              />
-              <text x={centerX + casingHalfW + 6} y={yStaticLevel + 3} fill="#38bdf8" fontSize="8" fontFamily="monospace">
-                Hстат: {well.hStatic} м
-              </text>
+              {well.hStatic >= minDepth && (
+                <>
+                  <line
+                    x1={centerX - casingHalfW}
+                    y1={yStaticLevel}
+                    x2={centerX + casingHalfW}
+                    y2={yStaticLevel}
+                    stroke="#38bdf8"
+                    strokeWidth="1.5"
+                    strokeDasharray="3,3"
+                  />
+                  <line x1={centerX + casingHalfW} y1={yStaticLevel} x2={centerX + casingHalfW + 6} y2={labelHStaticY} stroke="#38bdf8" strokeWidth="0.7" opacity="0.6" />
+                  <text x={centerX + casingHalfW + 8} y={labelHStaticY + 3} fill="#38bdf8" fontSize="8" fontFamily="monospace">
+                    Hстат: {well.hStatic} м
+                  </text>
+                </>
+              )}
 
-              {/* Динамический уровень жидкости (сплошной маркер и волна) */}
+              {/* Динамический уровень жидкости (сплошной маркер) */}
               <line
                 x1={centerX - casingHalfW}
                 y1={yDynamicLevel}
@@ -222,7 +246,8 @@ export const WellSchematic: React.FC<WellSchematicProps> = ({ result, well, comp
                 stroke="#0284c7"
                 strokeWidth="2.5"
               />
-              <text x={centerX + casingHalfW + 6} y={yDynamicLevel + 3} fill="#38bdf8" fontSize="8.5" fontWeight="bold" fontFamily="monospace">
+              <line x1={centerX + casingHalfW} y1={yDynamicLevel} x2={centerX + casingHalfW + 6} y2={labelHDynamicY} stroke="#38bdf8" strokeWidth="0.8" />
+              <text x={centerX + casingHalfW + 8} y={labelHDynamicY + 3} fill="#38bdf8" fontSize="8.5" fontWeight="bold" fontFamily="monospace">
                 Hдин: {well.hDynamic} м
               </text>
 
@@ -353,9 +378,9 @@ export const WellSchematic: React.FC<WellSchematicProps> = ({ result, well, comp
                 </text>
               </g>
 
-              {/* Выноска приема УЭЦН */}
-              <line x1={centerX + 16} y1={yPumpIntake + 5} x2={centerX + casingHalfW + 10} y2={yPumpIntake + 5} stroke="#f59e0b" strokeWidth="1" />
-              <text x={centerX + casingHalfW + 12} y={yPumpIntake + 8} fill="#f59e0b" fontSize="8.5" fontWeight="bold" fontFamily="monospace">
+              {/* Выноска приема УЭЦН с анти-наложением */}
+              <line x1={centerX + 16} y1={yPumpIntake + 5} x2={centerX + casingHalfW + 8} y2={labelIntakeY + 5} stroke="#f59e0b" strokeWidth="1" />
+              <text x={centerX + casingHalfW + 10} y={labelIntakeY + 8} fill="#f59e0b" fontSize="8.5" fontWeight="bold" fontFamily="monospace">
                 Прием: {well.depthPump} м
               </text>
 
@@ -397,6 +422,28 @@ export const WellSchematic: React.FC<WellSchematicProps> = ({ result, well, comp
                 </text>
               </g>
             </svg>
+
+            {/* Кнопка зума на схеме и блок охлаждения */}
+            <div className="absolute top-2 left-2 flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={() => setZoomBottomhole(!zoomBottomhole)}
+                className={`px-2 py-1 rounded-md border text-[10px] font-mono flex items-center gap-1 shadow-lg transition-colors ${
+                  zoomBottomhole
+                    ? 'bg-blue-600 text-white border-blue-400'
+                    : 'bg-[#0e141f]/90 text-slate-300 border-[#243044] hover:border-blue-500'
+                }`}
+                title="Приблизить интервал УЭЦН и пласта"
+              >
+                {zoomBottomhole ? <ZoomOut className="w-3 h-3" /> : <ZoomIn className="w-3 h-3" />}
+                <span>{zoomBottomhole ? 'Весь ствол' : 'Зум УЭЦН'}</span>
+              </button>
+              {(well.inclinationDeg ?? 0) > 0 && (
+                <div className="bg-[#0e141f]/90 border border-[#243044] rounded px-2 py-0.5 text-[9px] font-mono text-sky-300">
+                  Угол {well.inclinationDeg}° · TVD {Math.round(result.tvdPumpM)}м
+                </div>
+              )}
+            </div>
 
             {/* Легенда и информационный блок охлаждения прямо на схеме */}
             <div className="absolute top-2 right-2 bg-[#0e141f]/90 backdrop-blur-sm border border-[#243044] rounded-lg p-2.5 max-w-[155px] text-[10px] space-y-1.5 shadow-lg">
@@ -513,12 +560,12 @@ export const WellSchematic: React.FC<WellSchematicProps> = ({ result, well, comp
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
-                    <span className="font-bold text-slate-200">Гидрозащита (Протектор) 2П92Д</span>
+                    <span className="font-bold text-slate-200">Гидрозащита {hydro.name}</span>
                   </div>
-                  <span className="font-mono text-[11px] text-slate-400">L = 1.8 м · 75 кг</span>
+                  <span className="font-mono text-[11px] text-slate-400">L = {hydro.lengthM} м · {hydro.massKg} кг</span>
                 </div>
                 <div className="text-[11px] text-slate-400 mt-1 pl-4.5">
-                  Компенсация теплового расширения масла ПЭД, разгрузка осевой нагрузки вала.
+                  Осевая нагрузка до {hydro.axialLoadKg} кгс · Tmax = {hydro.tempMaxC}°C · масло {hydro.oilVolumeL} л.
                 </div>
               </div>
 

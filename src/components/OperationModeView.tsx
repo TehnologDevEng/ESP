@@ -75,6 +75,43 @@ export const OperationModeView: React.FC<OperationModeViewProps> = ({
   // Вкладка графика
   const [chartTab, setChartTab] = useState<'nodal' | 'regulation'>('nodal');
 
+  // Автосинхронизация при смене пресета/скважины или выбранного насоса
+  const prevSyncKeyRef = useRef<string>('');
+  useEffect(() => {
+    const syncKey = `${pump.id}|${well.wellName}|${well.qTarget}|${well.depthPump}|${well.hDynamic}|${well.hStatic}|${well.pReservoir}|${well.pBuf}|${well.pAnnular}|${fluid.waterCut}|${fluid.oilDensity}|${well.inclinationDeg || 0}`;
+    if (prevSyncKeyRef.current && prevSyncKeyRef.current !== syncKey) {
+      setOper(prev => ({
+        ...prev,
+        fixedStages: baseResult.totalStages,
+        operatingFrequency: electrical.frequency || 50,
+        pBufOper: well.pBuf,
+        pAnnularOper: well.pAnnular,
+        productivityIndex: initialKProd,
+        tmsBottomholeP: Math.round((well.pReservoir - (well.qTarget / initialKProd)) * 10) / 10,
+        tmsMotorTempC: Math.min(motor.tempMaxC ?? 130, well.tReservoir + 35)
+      }));
+    }
+    prevSyncKeyRef.current = syncKey;
+  }, [
+    pump.id,
+    well.wellName,
+    well.qTarget,
+    well.depthPump,
+    well.hDynamic,
+    well.hStatic,
+    well.pReservoir,
+    well.pBuf,
+    well.pAnnular,
+    well.tReservoir,
+    well.inclinationDeg,
+    fluid.waterCut,
+    fluid.oilDensity,
+    baseResult.totalStages,
+    electrical.frequency,
+    initialKProd,
+    motor.tempMaxC
+  ]);
+
   // Фактический расчет в режиме эксплуатации
   const opResult = useMemo(() => {
     return calculateOperatingPoint(

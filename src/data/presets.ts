@@ -29,7 +29,8 @@ export const PRESETS: WellPreset[] = [
       pAnnular: 10,
       pReservoir: 185,
       tReservoir: 68,
-      tWellhead: 18
+      tWellhead: 18,
+      inclinationDeg: 0
     },
     fluid: {
       waterCut: 42,
@@ -74,7 +75,8 @@ export const PRESETS: WellPreset[] = [
       pAnnular: 12,
       pReservoir: 150,
       tReservoir: 42,
-      tWellhead: 15
+      tWellhead: 15,
+      inclinationDeg: 18
     },
     fluid: {
       waterCut: 82,
@@ -119,7 +121,8 @@ export const PRESETS: WellPreset[] = [
       pAnnular: 8,
       pReservoir: 210,
       tReservoir: 55,
-      tWellhead: 10
+      tWellhead: 10,
+      inclinationDeg: 25
     },
     fluid: {
       waterCut: 25,
@@ -164,7 +167,8 @@ export const PRESETS: WellPreset[] = [
       pAnnular: 16,
       pReservoir: 160,
       tReservoir: 62,
-      tWellhead: 20
+      tWellhead: 20,
+      inclinationDeg: 12
     },
     fluid: {
       waterCut: 35,
