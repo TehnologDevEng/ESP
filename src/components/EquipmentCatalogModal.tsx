@@ -1,18 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { NT_CATALOG_2026, NTPumpRaw, NTMotorRaw, NTHydroRaw } from '../data/ntCatalog';
 import { PUMP_DATABASE } from '../data/pumps';
+import { MOTOR_DATABASE, HYDRO_DATABASE } from '../data/motors';
 import {
   X,
   Search,
   Layers,
   Zap,
   Shield,
-  Filter,
-  Check,
   ChevronRight,
-  Info,
-  SlidersHorizontal,
-  Download,
   Building2,
   CheckCircle2
 } from 'lucide-react';
@@ -21,14 +17,22 @@ interface EquipmentCatalogModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectPump: (pumpId: string) => void;
+  onSelectMotor?: (motorId: string) => void;
+  onSelectHydro?: (hydroId: string) => void;
   selectedPumpName?: string;
+  selectedMotorName?: string;
+  selectedHydroName?: string;
 }
 
 export const EquipmentCatalogModal: React.FC<EquipmentCatalogModalProps> = ({
   isOpen,
   onClose,
   onSelectPump,
-  selectedPumpName
+  onSelectMotor,
+  onSelectHydro,
+  selectedPumpName,
+  selectedMotorName,
+  selectedHydroName
 }) => {
   const [activeTab, setActiveTab] = useState<'pumps' | 'motors' | 'hydros'>('pumps');
   const [searchQuery, setSearchQuery] = useState('');
@@ -88,10 +92,27 @@ export const EquipmentCatalogModal: React.FC<EquipmentCatalogModalProps> = ({
   if (!isOpen) return null;
 
   const handleApplyPump = (pRaw: NTPumpRaw) => {
-    // Находим соответствующий насос в PUMP_DATABASE
     const found = PUMP_DATABASE.find(p => p.name === pRaw.name);
     if (found) {
       onSelectPump(found.id);
+      onClose();
+    }
+  };
+
+  const handleApplyMotor = (mRaw: NTMotorRaw) => {
+    if (!onSelectMotor) return;
+    const found = MOTOR_DATABASE.find(m => m.name === mRaw.name);
+    if (found) {
+      onSelectMotor(found.id);
+      onClose();
+    }
+  };
+
+  const handleApplyHydro = (hRaw: NTHydroRaw) => {
+    if (!onSelectHydro) return;
+    const found = HYDRO_DATABASE.find(h => h.name === hRaw.name);
+    if (found) {
+      onSelectHydro(found.id);
       onClose();
     }
   };
@@ -111,8 +132,8 @@ export const EquipmentCatalogModal: React.FC<EquipmentCatalogModalProps> = ({
                 <h2 className="text-base font-bold text-white tracking-wide">
                   Оборудование ООО «Новые Технологии»
                 </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800">
-                  КАТАЛОГ 2026 ГОДА
+                <span className="text-[11px] font-mono text-emerald-400">
+                  · Каталог 2026
                 </span>
               </div>
               <p className="text-xs text-slate-400">
@@ -326,7 +347,7 @@ export const EquipmentCatalogModal: React.FC<EquipmentCatalogModalProps> = ({
                           <div className="flex items-center gap-1.5">
                             <h3 className="text-sm font-bold text-white font-mono">{p.name}</h3>
                             {isSelected && (
-                              <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                              <span className="text-[10px] font-mono text-blue-400 font-semibold">· Активен</span>
                             )}
                           </div>
                           <p className="text-[11px] text-slate-400">
@@ -415,102 +436,172 @@ export const EquipmentCatalogModal: React.FC<EquipmentCatalogModalProps> = ({
           {/* ================= ДВИГАТЕЛИ ================= */}
           {activeTab === 'motors' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filteredMotors.map((m, idx) => (
-                <div
-                  key={idx}
-                  className="bg-[#111722] border border-[#243044] hover:border-slate-500 rounded-xl p-4 flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div>
-                        <h3 className="text-sm font-bold text-white font-mono">{m.name}</h3>
-                        <p className="text-[11px] text-slate-400">
-                          Ø{m.diam} мм · {m.sections} {m.sections === 1 ? 'секция' : 'секции'} · L={m.len} м
-                        </p>
-                      </div>
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
-                          m.type === 'впэд'
-                            ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                            : 'bg-blue-950 text-blue-300 border border-blue-800'
-                        }`}
-                      >
-                        {m.type === 'впэд' ? 'Вентильный (PMSM)' : 'Асинхронный (ПЭД)'}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-1.5 my-3 text-center">
-                      <div className="bg-[#0b0e14] p-2 rounded-lg border border-[#1e2738]">
-                        <span className="text-[10px] text-slate-400 block">Мощность</span>
-                        <span className="text-xs font-bold font-mono text-sky-400">{m.power} кВт</span>
-                      </div>
-                      <div className="bg-[#0b0e14] p-2 rounded-lg border border-[#1e2738]">
-                        <span className="text-[10px] text-slate-400 block">КПД двигателя</span>
-                        <span className="text-xs font-bold font-mono text-emerald-400">{(m.eff_m * 100).toFixed(1)}%</span>
-                      </div>
-                      <div className="bg-[#0b0e14] p-2 rounded-lg border border-[#1e2738]">
-                        <span className="text-[10px] text-slate-400 block">Термостойкость</span>
-                        <span className="text-xs font-bold font-mono text-amber-400">{m.temp_max}°C</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1 text-[11px] font-mono text-slate-400 py-1 border-t border-[#1e2738]">
-                      <div className="flex justify-between">
-                        <span>Типовой диапазон частот ЧРП:</span>
-                        <span className="text-slate-200">
-                          {m.type === 'впэд' ? '35 – 200 Гц (до 6000 об/мин)' : '40 – 60 Гц (до 3000 об/мин)'}
+              {filteredMotors.map((m, idx) => {
+                const isSelected = selectedMotorName === m.name;
+                return (
+                  <div
+                    key={idx}
+                    className={`bg-[#111722] border rounded-xl p-4 flex flex-col justify-between transition-all ${
+                      isSelected
+                        ? 'border-emerald-500 bg-emerald-950/15 ring-1 ring-emerald-500/70'
+                        : 'border-[#243044] hover:border-slate-500'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <h3 className="text-sm font-bold text-white font-mono">{m.name}</h3>
+                            {isSelected && (
+                              <span className="text-[10px] font-mono text-emerald-400 font-semibold">· В расчете</span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-400">
+                            Ø{m.diam} мм · {m.sections} {m.sections === 1 ? 'секция' : 'секции'} · L={m.len} м
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-mono text-slate-300 shrink-0">
+                          {m.type === 'впэд' ? 'ВПЭД (PMSM)' : 'Асинхр. ПЭД'}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Габарит обсадной колонны:</span>
-                        <span className="text-slate-200">
-                          {m.diam <= 103 ? 'от 140 мм' : m.diam <= 117 ? 'от 146 мм' : m.diam <= 130 ? 'от 168 мм' : 'от 178 мм'}
-                        </span>
+
+                      <div className="grid grid-cols-3 gap-1.5 my-3 text-center">
+                        <div className="bg-[#0b0e14] p-2 rounded-lg border border-[#1e2738]">
+                          <span className="text-[10px] text-slate-400 block">Мощность</span>
+                          <span className="text-xs font-bold font-mono text-sky-400">{m.power} кВт</span>
+                        </div>
+                        <div className="bg-[#0b0e14] p-2 rounded-lg border border-[#1e2738]">
+                          <span className="text-[10px] text-slate-400 block">КПД двигателя</span>
+                          <span className="text-xs font-bold font-mono text-emerald-400">{(m.eff_m * 100).toFixed(1)}%</span>
+                        </div>
+                        <div className="bg-[#0b0e14] p-2 rounded-lg border border-[#1e2738]">
+                          <span className="text-[10px] text-slate-400 block">Термостойкость</span>
+                          <span className="text-xs font-bold font-mono text-amber-400">{m.temp_max}°C</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 text-[11px] font-mono text-slate-400 py-1 border-t border-[#1e2738]">
+                        <div className="flex justify-between">
+                          <span>Частота ЧРП:</span>
+                          <span className="text-slate-200">
+                            {m.type === 'впэд' ? '35–200 Гц (до 6000 об/мин)' : '40–60 Гц (до 3000 об/мин)'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Колонна (мин.):</span>
+                          <span className="text-slate-200">
+                            {m.diam <= 103 ? 'от 140 мм' : m.diam <= 117 ? 'от 146 мм' : m.diam <= 130 ? 'от 168 мм' : 'от 178 мм'}
+                          </span>
+                        </div>
                       </div>
                     </div>
+
+                    {onSelectMotor && (
+                      <div className="mt-3 pt-2 border-t border-[#1e2738]">
+                        <button
+                          type="button"
+                          onClick={() => handleApplyMotor(m)}
+                          className={`w-full py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                            isSelected
+                              ? 'bg-emerald-600/25 text-emerald-300 border border-emerald-500/50 cursor-default'
+                              : 'bg-[#1a2332] hover:bg-emerald-600 text-slate-200 hover:text-white'
+                          }`}
+                        >
+                          {isSelected ? (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>Выбран в скважине</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>Применить в расчет</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
           {/* ================= ГИДРОЗАЩИТЫ ================= */}
           {activeTab === 'hydros' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-              {filteredHydros.map((h, idx) => (
-                <div
-                  key={idx}
-                  className="bg-[#111722] border border-[#243044] hover:border-slate-500 rounded-xl p-4 flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="text-sm font-bold text-white font-mono">{h.name}</h3>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-950 text-blue-300 border border-blue-800">
-                        Ø{h.diam} мм
-                      </span>
+              {filteredHydros.map((h, idx) => {
+                const isSelected = selectedHydroName === h.name;
+                return (
+                  <div
+                    key={idx}
+                    className={`bg-[#111722] border rounded-xl p-4 flex flex-col justify-between transition-all ${
+                      isSelected
+                        ? 'border-sky-500 bg-sky-950/15 ring-1 ring-sky-500/70'
+                        : 'border-[#243044] hover:border-slate-500'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div>
+                          <h3 className="text-sm font-bold text-white font-mono">{h.name}</h3>
+                          {isSelected && (
+                            <span className="text-[10px] font-mono text-sky-400 font-semibold">В расчете</span>
+                          )}
+                        </div>
+                        <span className="text-[11px] font-mono text-sky-300 shrink-0">
+                          Ø{h.diam} мм
+                        </span>
+                      </div>
+
+                      <p className="text-[11px] text-slate-400 mb-3">
+                        Модуль гидрозащиты с открытой/диафрагменной камерой
+                      </p>
+
+                      <div className="space-y-2 text-xs font-mono">
+                        <div className="bg-[#0b0e14] p-2 rounded-lg border border-[#1e2738]">
+                          <span className="text-[10px] text-slate-400 block">Осевая нагрузка пяты</span>
+                          <span className="text-sm font-bold text-emerald-400">{h.axial_kg} кгс</span>
+                        </div>
+                        <div className="bg-[#0b0e14] p-2 rounded-lg border border-[#1e2738]">
+                          <span className="text-[10px] text-slate-400 block">Объем барьерного масла</span>
+                          <span className="text-sm font-bold text-sky-400">{h.oil} л</span>
+                        </div>
+                        <div className="bg-[#0b0e14] p-2 rounded-lg border border-[#1e2738]">
+                          <span className="text-[10px] text-slate-400 block">Макс. температура</span>
+                          <span className="text-sm font-bold text-amber-400">{h.temp}°C</span>
+                        </div>
+                      </div>
                     </div>
 
-                    <p className="text-[11px] text-slate-400 mb-3">
-                      Модуль гидрозащиты электродвигателя с открытой/диафрагменной камерой
-                    </p>
-
-                    <div className="space-y-2 text-xs font-mono">
-                      <div className="bg-[#0b0e14] p-2 rounded-lg border border-[#1e2738]">
-                        <span className="text-[10px] text-slate-400 block">Осевая нагрузка пяты</span>
-                        <span className="text-sm font-bold text-emerald-400">{h.axial_kg} кгс</span>
+                    {onSelectHydro && (
+                      <div className="mt-3 pt-2 border-t border-[#1e2738]">
+                        <button
+                          type="button"
+                          onClick={() => handleApplyHydro(h)}
+                          className={`w-full py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                            isSelected
+                              ? 'bg-sky-600/25 text-sky-300 border border-sky-500/50 cursor-default'
+                              : 'bg-[#1a2332] hover:bg-sky-600 text-slate-200 hover:text-white'
+                          }`}
+                        >
+                          {isSelected ? (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-sky-400" />
+                              <span>Выбрана в скважине</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>Применить в расчет</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </>
+                          )}
+                        </button>
                       </div>
-                      <div className="bg-[#0b0e14] p-2 rounded-lg border border-[#1e2738]">
-                        <span className="text-[10px] text-slate-400 block">Объем барьерного масла</span>
-                        <span className="text-sm font-bold text-sky-400">{h.oil} л</span>
-                      </div>
-                      <div className="bg-[#0b0e14] p-2 rounded-lg border border-[#1e2738]">
-                        <span className="text-[10px] text-slate-400 block">Макс. температура</span>
-                        <span className="text-sm font-bold text-amber-400">{h.temp}°C</span>
-                      </div>
-                    </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

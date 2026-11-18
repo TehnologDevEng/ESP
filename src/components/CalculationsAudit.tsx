@@ -40,17 +40,18 @@ export const CalculationsAudit: React.FC<CalculationsAuditProps> = ({
         <div className="flex items-center gap-2">
           <Calculator className="w-4 h-4 text-blue-400" />
           <span className="text-xs font-bold uppercase tracking-wider text-slate-200">
-            Инженерная верификация и аудит гидродинамических расчетов
+            Инженерная верификация и аудит расчетов
           </span>
-          <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-mono text-[10px] border border-emerald-800">
-            Audit v10.4 Verified
+          <span className="text-[11px] font-mono text-slate-400 hidden sm:inline">
+            · ГОСТ 34771-2021 / API RP 11S2
           </span>
         </div>
 
         <div className="flex items-center bg-[#0e141f] p-1 rounded-lg border border-[#243044]">
           <button
+            type="button"
             onClick={() => setActiveSection('audit')}
-            className={`px-3 py-1 text-[11px] font-medium rounded transition-all ${
+            className={`px-3 py-1 text-[11px] font-medium rounded transition-all whitespace-nowrap shrink-0 ${
               activeSection === 'audit'
                 ? 'bg-blue-600 text-white font-bold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -59,8 +60,9 @@ export const CalculationsAudit: React.FC<CalculationsAuditProps> = ({
             Сводка расчетов
           </button>
           <button
+            type="button"
             onClick={() => setActiveSection('formulas')}
-            className={`px-3 py-1 text-[11px] font-medium rounded transition-all ${
+            className={`px-3 py-1 text-[11px] font-medium rounded transition-all whitespace-nowrap shrink-0 ${
               activeSection === 'formulas'
                 ? 'bg-blue-600 text-white font-bold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -69,15 +71,16 @@ export const CalculationsAudit: React.FC<CalculationsAuditProps> = ({
             Физические формулы
           </button>
           <button
+            type="button"
             onClick={() => setActiveSection('recommendations')}
-            className={`px-3 py-1 text-[11px] font-medium rounded transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1 text-[11px] font-medium rounded transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
               activeSection === 'recommendations'
                 ? 'bg-blue-600 text-white font-bold shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             <Lightbulb className="w-3 h-3 text-amber-400" />
-            Что можно улучшить
+            Экспертные рекомендации
           </button>
         </div>
       </div>

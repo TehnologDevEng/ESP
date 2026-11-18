@@ -1,13 +1,14 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { CalculationResult, WellParameters, CompletionGeometry } from '../types/esp';
-import { generateFullStringCurves, generateSystemHeadCurve } from '../utils/calculations';
-import { LineChart, Activity, Zap, Gauge, Sparkles, Sliders } from 'lucide-react';
+import { generateFullStringCurves, generateSystemHeadCurve, getViscosityCorrections } from '../utils/calculations';
+import { LineChart, Sliders, RotateCcw } from 'lucide-react';
 
 interface PerformanceChartProps {
   result: CalculationResult;
   well: WellParameters;
   completion: CompletionGeometry;
   frequency: number;
+  onChangeFrequency?: (f: number) => void;
 }
 
 type ChartViewMode = 'all' | 'head' | 'power_eff' | 'frequency_family';
@@ -16,7 +17,8 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   result,
   well,
   completion,
-  frequency
+  frequency,
+  onChangeFrequency
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -25,6 +27,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   const [hoverData, setHoverData] = useState<{
     q: number;
     h: number;
+    tdh: number;
     p: number;
     eff: number;
     x: number;
@@ -45,6 +48,34 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   // Кривая сети
   const systemCurves = generateSystemHeadCurve(result, well, completion, maxQ);
 
+  // Точка пересечения кривой насоса H(Q) и кривой сети TDH(Q)
+  const intersectionPoint = (() => {
+    const count = Math.min(curves.length, systemCurves.length);
+    for (let i = 1; i < count; i++) {
+      // Находим TDH при q = curves[i].q линейной интерполяцией по systemCurves
+      const qPrev = curves[i - 1].q;
+      const qCurr = curves[i].q;
+      const interpTdh = (qVal: number) => {
+        const idx = systemCurves.findIndex(s => s.q >= qVal);
+        if (idx <= 0) return systemCurves[0]?.hReq ?? 0;
+        const s0 = systemCurves[idx - 1];
+        const s1 = systemCurves[idx];
+        const ratio = (qVal - s0.q) / Math.max(1e-6, s1.q - s0.q);
+        return s0.hReq + ratio * (s1.hReq - s0.hReq);
+      };
+      const diffPrev = curves[i - 1].hTotal - interpTdh(qPrev);
+      const diffCurr = curves[i].hTotal - interpTdh(qCurr);
+      if (diffPrev >= 0 && diffCurr <= 0 && (diffPrev - diffCurr) > 1e-6) {
+        const t = diffPrev / (diffPrev - diffCurr);
+        return {
+          q: qPrev + t * (qCurr - qPrev),
+          h: curves[i - 1].hTotal + t * (curves[i].hTotal - curves[i - 1].hTotal)
+        };
+      }
+    }
+    return null;
+  })();
+
   // Семейство частот ЧРП для режима 'frequency_family'
   const freqFamilyList = [40, 45, 50, 55, 60];
   const freqCurvesMap = freqFamilyList.map(f => ({
@@ -62,6 +93,8 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
 
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
     const w = rect.width;
     const h = rect.height;
 
@@ -70,15 +103,14 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     ctx.scale(dpr, dpr);
 
     // Границы графика
-    const padLeft = 60;
-    const padRight = 60;
-    const padTop = 30;
-    const padBottom = 45;
+    const padLeft = 62;
+    const padRight = viewMode === 'all' || viewMode === 'power_eff' ? 76 : 44;
+    const padTop = 26;
+    const padBottom = 42;
 
     const plotW = w - padLeft - padRight;
     const plotH = h - padTop - padBottom;
 
-    // Очистка
     ctx.clearRect(0, 0, w, h);
 
     // Координатные преобразования
@@ -87,8 +119,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     const toYPower = (p: number) => padTop + plotH - (p / maxP) * plotH;
     const toYEff = (eff: number) => padTop + plotH - (eff / maxEff) * plotH;
 
-    // 1. Сетка и фон рабочей зоны
-    // Рекомендованный рабочий диапазон (ROR)
+    // 1. Зона ОДР
     const kF = frequency / 50;
     const qMinRec = pump.qMin * kF;
     const qMaxRec = pump.qMax * kF;
@@ -98,8 +129,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     if (rorX2 > rorX1) {
       ctx.fillStyle = 'rgba(16, 185, 129, 0.07)';
       ctx.fillRect(rorX1, padTop, rorX2 - rorX1, plotH);
-      // Пунктирные границы зоны
-      ctx.strokeStyle = 'rgba(16, 185, 129, 0.25)';
+      ctx.strokeStyle = 'rgba(16, 185, 129, 0.28)';
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
       ctx.beginPath();
@@ -109,34 +139,35 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
       ctx.setLineDash([]);
     }
 
-    // Горизонтальная сетка (Напор)
+    // Горизонтальная сетка (Напор + КПД/Мощность справа)
     const gridYCount = 5;
-    ctx.strokeStyle = '#1e293b';
     ctx.lineWidth = 1;
-    ctx.fillStyle = '#64748b';
     ctx.font = '10px "JetBrains Mono", monospace';
-    ctx.textAlign = 'right';
 
     for (let i = 0; i <= gridYCount; i++) {
       const val = (maxH / gridYCount) * i;
       const y = toYHead(val);
 
+      ctx.strokeStyle = '#1e293b';
       ctx.beginPath();
       ctx.moveTo(padLeft, y);
       ctx.lineTo(padLeft + plotW, y);
       ctx.stroke();
 
       // Подпись напора слева (м)
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#94a3b8';
       ctx.fillText(`${Math.round(val)} м`, padLeft - 8, y + 3);
 
-      // Подпись мощности/КПД справа
+      // Подпись КПД и мощности справа
       if (viewMode === 'all' || viewMode === 'power_eff') {
         const valEff = Math.round((maxEff / gridYCount) * i);
+        const valPow = ((maxP / gridYCount) * i).toFixed(0);
         ctx.textAlign = 'left';
         ctx.fillStyle = '#10b981';
-        ctx.fillText(`${valEff}%`, padLeft + plotW + 8, y + 3);
-        ctx.textAlign = 'right';
-        ctx.fillStyle = '#64748b';
+        ctx.fillText(`${valEff}%`, padLeft + plotW + 8, y - 1);
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillText(`${valPow} кВт`, padLeft + plotW + 8, y + 10);
       }
     }
 
@@ -147,6 +178,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
       const qVal = (maxQ / gridXCount) * i;
       const x = toX(qVal);
 
+      ctx.strokeStyle = '#1e293b';
       ctx.beginPath();
       ctx.moveTo(x, padTop);
       ctx.lineTo(x, padTop + plotH);
@@ -160,34 +192,34 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     ctx.fillStyle = '#94a3b8';
     ctx.font = '11px "Plus Jakarta Sans", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Подача жидкости Q, м³/сут', padLeft + plotW / 2, padTop + plotH + 34);
+    ctx.fillText('Подача жидкости Q, м³/сут', padLeft + plotW / 2, padTop + plotH + 33);
 
-    // Левая ось Y (Напор всех ступеней)
+    // Левая ось Y
     ctx.save();
     ctx.translate(14, padTop + plotH / 2);
     ctx.rotate(-Math.PI / 2);
     ctx.textAlign = 'center';
     ctx.fillStyle = '#38bdf8';
-    ctx.font = 'bold 11px "Plus Jakarta Sans", sans-serif';
-    ctx.fillText(`Суммарный напор всей сборки H (${totalStages} ст.), м`, 0, 0);
+    ctx.font = '600 11px "Plus Jakarta Sans", sans-serif';
+    ctx.fillText(`Напор сборки H (${totalStages} ст.), м`, 0, 0);
     ctx.restore();
 
     // Правая ось Y
     if (viewMode === 'all' || viewMode === 'power_eff') {
       ctx.save();
-      ctx.translate(w - 14, padTop + plotH / 2);
+      ctx.translate(w - 11, padTop + plotH / 2);
       ctx.rotate(Math.PI / 2);
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#10b981';
-      ctx.font = 'bold 11px "Plus Jakarta Sans", sans-serif';
-      ctx.fillText('КПД насоса η (%) / Мощность (кВт)', 0, 0);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '600 10px "Plus Jakarta Sans", sans-serif';
+      ctx.fillText('КПД (%) · Мощность (кВт)', 0, 0);
       ctx.restore();
     }
 
-    // 2. Отрисовка семейства частот ЧРП (если включен режим)
+    // 2. Семейство частот ЧРП
     if (viewMode === 'frequency_family') {
       freqCurvesMap.forEach(({ freq, points }) => {
-        const isCurrent = freq === frequency;
+        const isCurrent = Math.abs(freq - frequency) < 0.25;
         ctx.strokeStyle = isCurrent ? '#38bdf8' : 'rgba(56, 189, 248, 0.35)';
         ctx.lineWidth = isCurrent ? 3 : 1.5;
         ctx.setLineDash(isCurrent ? [] : [3, 3]);
@@ -202,18 +234,18 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Подпись частоты в конце линии
         const lastPt = points[points.length - 1];
         if (lastPt) {
           ctx.fillStyle = isCurrent ? '#38bdf8' : '#64748b';
-          ctx.font = '9px monospace';
-          ctx.fillText(`${freq} Гц`, toX(lastPt.q) + 14, toYHead(lastPt.hTotal));
+          ctx.font = '9px "JetBrains Mono", monospace';
+          ctx.textAlign = 'left';
+          ctx.fillText(`${freq} Гц`, Math.min(w - 36, toX(lastPt.q) + 4), toYHead(lastPt.hTotal) - 3);
         }
       });
     }
 
-    // 3. Кривая требуемого напора системы (System Curve)
-    if (viewMode === 'all' || viewMode === 'head') {
+    // 3. Кривая требуемого напора системы TDH(Q)
+    if (viewMode === 'all' || viewMode === 'head' || viewMode === 'frequency_family') {
       ctx.strokeStyle = '#f43f5e';
       ctx.lineWidth = 2;
       ctx.setLineDash([5, 4]);
@@ -229,7 +261,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     }
 
     // 4. Основная напорная характеристика всей сборки H_total(Q)
-    if (viewMode === 'all' || viewMode === 'head') {
+    if (viewMode === 'all' || viewMode === 'head' || viewMode === 'frequency_family') {
       ctx.strokeStyle = '#0284c7';
       ctx.lineWidth = 3.5;
       ctx.beginPath();
@@ -241,13 +273,12 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
       });
       ctx.stroke();
 
-      // Освещенный градиент кривой для глубины
       ctx.strokeStyle = '#38bdf8';
       ctx.lineWidth = 1.5;
       ctx.stroke();
     }
 
-    // 5. Кривая мощности всей сборки P_shaft(Q)
+    // 5. Кривая мощности P_shaft(Q)
     if (viewMode === 'all' || viewMode === 'power_eff') {
       ctx.strokeStyle = '#f59e0b';
       ctx.lineWidth = 2.2;
@@ -261,7 +292,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
       ctx.stroke();
     }
 
-    // 6. Кривая КПД всей сборки Eff(Q)
+    // 6. Кривая КПД Eff(Q)
     if (viewMode === 'all' || viewMode === 'power_eff') {
       ctx.strokeStyle = '#10b981';
       ctx.lineWidth = 2.2;
@@ -275,34 +306,51 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
       ctx.stroke();
     }
 
-    // 7. Точка максимального КПД (BEP) строго на кривой H(Q) при Q_ном
-    const bepQ = pump.qNom * kF;
-    const [a0, a1, a2] = pump.coeffH;
-    const viscCorr = result.mixViscosity > 10
-      ? Math.max(0.70, 1 - 0.008 * (16.5 * Math.pow(result.mixViscosity, 0.5) / Math.pow(pump.qNom, 0.25)))
-      : 1.0;
-    const hBepStage = Math.max(0, (a0 - a1 * pump.qNom - a2 * Math.pow(pump.qNom, 2)) * Math.pow(kF, 2) * viscCorr * result.gasHeadDegradationFactor);
-    const bepHead = hBepStage * totalStages;
-    const bepX = toX(bepQ);
-    const bepY = toYHead(bepHead);
+    // 7. Точка максимального КПД (BEP) строго на кривой H(Q) с точной ANSI/HI вязкостью
+    if (viewMode !== 'power_eff') {
+      const bepQ = pump.qNom * kF;
+      const [a0, a1, a2] = pump.coeffH;
+      const { cH } = getViscosityCorrections(result.mixViscosity, pump.qNom);
+      const hBepStage = Math.max(
+        0,
+        (a0 - a1 * pump.qNom - a2 * Math.pow(pump.qNom, 2)) *
+          Math.pow(kF, 2) *
+          cH *
+          result.gasHeadDegradationFactor
+      );
+      const bepHead = hBepStage * totalStages;
+      const bepX = toX(bepQ);
+      const bepY = toYHead(bepHead);
 
-    ctx.fillStyle = '#10b981';
-    ctx.beginPath();
-    ctx.arc(bepX, bepY, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
+      ctx.fillStyle = '#10b981';
+      ctx.beginPath();
+      ctx.arc(bepX, bepY, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
 
-    // 8. Рабочая точка скважины (Operating Target Point)
+    // 8. Пересечение с сетью H(Q) = TDH(Q)
+    if (intersectionPoint && viewMode !== 'power_eff') {
+      const intX = toX(intersectionPoint.q);
+      const intY = toYHead(intersectionPoint.h);
+      ctx.fillStyle = '#0b0e14';
+      ctx.beginPath();
+      ctx.arc(intX, intY, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#f43f5e';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // 9. Рабочая точка скважины (Target Q)
     const opX = toX(well.qTarget);
-    const opY = toYHead(fullStringHeadAtQ);
+    const opY = viewMode === 'power_eff' ? toYEff(fullStringEfficiency) : toYHead(fullStringHeadAtQ);
 
-    // Пунктирные направляющие к осям
     ctx.strokeStyle = '#f59e0b';
     ctx.lineWidth = 1.2;
     ctx.setLineDash([4, 4]);
-
     ctx.beginPath();
     ctx.moveTo(opX, padTop + plotH);
     ctx.lineTo(opX, opY);
@@ -310,45 +358,75 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Круг рабочей точки с пульсацией
     ctx.fillStyle = '#f59e0b';
     ctx.beginPath();
-    ctx.arc(opX, opY, 6, 0, Math.PI * 2);
+    ctx.arc(opX, opY, 5.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Текстовая плашка рабочей точки
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    // Подпись рабочей точки
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
     ctx.strokeStyle = '#f59e0b';
     ctx.lineWidth = 1;
-    const tagText = `${well.qTarget} м³/сут · ${Math.round(fullStringHeadAtQ)} м`;
+    const tagText = viewMode === 'power_eff'
+      ? `${well.qTarget} м³/сут · η=${fullStringEfficiency.toFixed(1)}%`
+      : `${well.qTarget} м³/сут · ${Math.round(fullStringHeadAtQ)} м`;
     ctx.font = 'bold 10px "JetBrains Mono", monospace';
+    ctx.textAlign = 'center';
     const tagW = ctx.measureText(tagText).width + 12;
-    const tagX = Math.min(padLeft + plotW - tagW - 4, opX + 10);
-    const tagY = Math.max(padTop + 14, opY - 14);
+    const tagX = Math.max(padLeft + 4, Math.min(padLeft + plotW - tagW - 4, opX + 10));
+    const tagY = Math.max(padTop + 16, opY - 12);
 
     ctx.fillRect(tagX, tagY - 12, tagW, 18);
     ctx.strokeRect(tagX, tagY - 12, tagW, 18);
     ctx.fillStyle = '#fef08a';
     ctx.fillText(tagText, tagX + tagW / 2, tagY + 1);
 
-    // 9. Отрисовка перекрестия при наведении курсора (Hover crosshair)
+    // 10. Интерактивное перекрестие и маркеры на кривых
     if (hoverData) {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([2, 2]);
+      const hx = toX(hoverData.q);
+      const hyHead = toYHead(hoverData.h);
+      const hyPow = toYPower(hoverData.p);
+      const hyEff = toYEff(hoverData.eff);
 
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
       ctx.beginPath();
-      ctx.moveTo(hoverData.x, padTop);
-      ctx.lineTo(hoverData.x, padTop + plotH);
+      ctx.moveTo(hx, padTop);
+      ctx.lineTo(hx, padTop + plotH);
+      if (viewMode !== 'power_eff') {
+        ctx.moveTo(padLeft, hyHead);
+        ctx.lineTo(padLeft + plotW, hyHead);
+      }
       ctx.stroke();
       ctx.setLineDash([]);
-    }
-  }, [result, well, completion, frequency, viewMode, hoverData]);
 
-  // Обработка движения мыши для интерактивного перекрестия
+      if (viewMode !== 'power_eff') {
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(hx, hyHead, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+      if (viewMode === 'all' || viewMode === 'power_eff') {
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(hx, hyPow, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#10b981';
+        ctx.beginPath();
+        ctx.arc(hx, hyEff, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }, [result, well, completion, frequency, viewMode, hoverData, intersectionPoint]);
+
+  // Обработка движения мыши
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -357,10 +435,10 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    const padLeft = 60;
-    const padRight = 60;
-    const padTop = 30;
-    const padBottom = 45;
+    const padLeft = 62;
+    const padRight = viewMode === 'all' || viewMode === 'power_eff' ? 76 : 44;
+    const padTop = 26;
+    const padBottom = 42;
     const plotW = rect.width - padLeft - padRight;
 
     if (x < padLeft || x > padLeft + plotW || y < padTop || y > rect.height - padBottom) {
@@ -371,14 +449,18 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     const relX = (x - padLeft) / plotW;
     const qHover = Math.max(0, Math.min(maxQ, relX * maxQ));
 
-    // Находим ближайшую точку в кривых
     const closest = curves.reduce((prev, curr) =>
       Math.abs(curr.q - qHover) < Math.abs(prev.q - qHover) ? curr : prev
+    );
+
+    const closestSys = systemCurves.reduce((prev, curr) =>
+      Math.abs(curr.q - closest.q) < Math.abs(prev.q - closest.q) ? curr : prev
     );
 
     setHoverData({
       q: Math.round(closest.q),
       h: Math.round(closest.hTotal),
+      tdh: Math.round(closestSys.hReq),
       p: Math.round(closest.pShaft * 10) / 10,
       eff: Math.round(closest.efficiency * 10) / 10,
       x,
@@ -392,55 +474,58 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
 
   return (
     <div className="bg-[#131924] border border-[#243044] rounded-xl overflow-hidden shadow-xl flex flex-col h-full">
-      {/* Верхняя инженерная панель графика */}
-      <div className="bg-[#182130] px-4 py-3 border-b border-[#243044] flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <LineChart className="w-4 h-4 text-blue-400" />
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-200">
-            Характеристика всей сборки УЭЦН ({totalStages} ступеней · {numSections} секц.)
+      {/* Верхняя панель графика */}
+      <div className="bg-[#182130] px-4 py-2.5 border-b border-[#243044] flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <LineChart className="w-4 h-4 text-blue-400 shrink-0" />
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-200 truncate">
+            Сборка УЭЦН: {totalStages} ст. · {numSections} секц.
           </span>
-          <span className="text-[10px] px-2 py-0.5 rounded bg-sky-950 text-sky-300 font-mono border border-sky-800">
-            Full String {frequency} Гц
+          <span className="text-[11px] font-mono text-sky-400 whitespace-nowrap">
+            · {frequency} Гц
           </span>
         </div>
 
-        {/* Переключатель вкладок графика */}
         <div className="flex items-center gap-1 bg-[#0e141f] p-1 rounded-lg border border-[#243044]">
           <button
+            type="button"
             onClick={() => setChartViewMode('all')}
-            className={`px-2.5 py-1 text-[11px] font-medium rounded transition-all ${
+            className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors whitespace-nowrap shrink-0 ${
               viewMode === 'all'
-                ? 'bg-blue-600 text-white shadow-sm font-semibold'
+                ? 'bg-blue-600 text-white font-semibold'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             Все кривые
           </button>
           <button
+            type="button"
             onClick={() => setChartViewMode('head')}
-            className={`px-2.5 py-1 text-[11px] font-medium rounded transition-all ${
+            className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors whitespace-nowrap shrink-0 ${
               viewMode === 'head'
-                ? 'bg-blue-600 text-white shadow-sm font-semibold'
+                ? 'bg-blue-600 text-white font-semibold'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             Напор H(Q)
           </button>
           <button
+            type="button"
             onClick={() => setChartViewMode('power_eff')}
-            className={`px-2.5 py-1 text-[11px] font-medium rounded transition-all ${
+            className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors whitespace-nowrap shrink-0 ${
               viewMode === 'power_eff'
-                ? 'bg-blue-600 text-white shadow-sm font-semibold'
+                ? 'bg-blue-600 text-white font-semibold'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            Мощность & КПД
+            Мощность и КПД
           </button>
           <button
+            type="button"
             onClick={() => setChartViewMode('frequency_family')}
-            className={`px-2.5 py-1 text-[11px] font-medium rounded transition-all flex items-center gap-1 ${
+            className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors flex items-center gap-1 whitespace-nowrap shrink-0 ${
               viewMode === 'frequency_family'
-                ? 'bg-blue-600 text-white shadow-sm font-semibold'
+                ? 'bg-blue-600 text-white font-semibold'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -450,45 +535,63 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
         </div>
       </div>
 
-      {/* Полоса мгновенных параметров рабочей точки */}
-      <div className="bg-[#0f1520] px-4 py-2 border-b border-[#1e2738] flex flex-wrap items-center justify-between text-xs font-mono">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-500/30" />
-            <span className="text-slate-400">Рабочая точка:</span>
+      {/* Встроенный регулятор ЧРП и показатели рабочей точки */}
+      <div className="bg-[#0f1520] px-4 py-2 border-b border-[#1e2738] flex flex-wrap items-center justify-between gap-3 text-xs font-mono tabular-nums">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <div>
+            <span className="text-slate-400">Точка: </span>
             <span className="font-bold text-amber-300">{well.qTarget} м³/сут</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-400">Напор установки:</span>
+          <div>
+            <span className="text-slate-400">H: </span>
             <span className="font-bold text-sky-400">{Math.round(fullStringHeadAtQ)} м</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-400">Мощность вала:</span>
+          <div>
+            <span className="text-slate-400">N: </span>
             <span className="font-bold text-amber-400">{fullStringShaftPowerKW.toFixed(1)} кВт</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-400">КПД насоса:</span>
+          <div>
+            <span className="text-slate-400">η: </span>
             <span className="font-bold text-emerald-400">{fullStringEfficiency.toFixed(1)}%</span>
+          </div>
+          <div className={result.isWithinOperatingRange ? 'text-emerald-400' : 'text-rose-400'}>
+            {result.isWithinOperatingRange ? '● В ОДР' : '▲ Вне ОДР'}
           </div>
         </div>
 
-        {/* Бейдж соответствия диапазону */}
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-slate-400">ОДР ({Math.round(pump.qMin * (frequency / 50))} – {Math.round(pump.qMax * (frequency / 50))} м³/сут):</span>
-          <span
-            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-              result.isWithinOperatingRange
-                ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60'
-                : 'bg-rose-950 text-rose-300 border border-rose-700/60'
-            }`}
-          >
-            {result.isWithinOperatingRange ? 'В ОДР (Оптимально)' : 'Вне ОДР (Опасно)'}
-          </span>
-        </div>
+        {onChangeFrequency && (
+          <div className="flex items-center gap-2 ml-auto">
+            <label htmlFor="chart-vfd-slider" className="text-[11px] font-sans text-slate-400 whitespace-nowrap">
+              ЧРП:
+            </label>
+            <input
+              id="chart-vfd-slider"
+              type="range"
+              min={35}
+              max={65}
+              step={0.5}
+              value={frequency}
+              onChange={(e) => onChangeFrequency(parseFloat(e.target.value))}
+              className="w-24 sm:w-28 h-1.5 bg-[#1e2738] rounded-lg appearance-none cursor-pointer accent-sky-500"
+            />
+            <span className="w-14 text-right font-bold text-sky-300">{frequency.toFixed(1)} Гц</span>
+            {Math.abs(frequency - 50) > 0.1 && (
+              <button
+                type="button"
+                onClick={() => onChangeFrequency(50)}
+                title="Сбросить частоту на 50 Гц"
+                className="px-1.5 py-0.5 rounded bg-[#182130] hover:bg-[#243044] text-slate-300 text-[10px] border border-[#243044] flex items-center gap-1 transition-colors whitespace-nowrap"
+              >
+                <RotateCcw className="w-2.5 h-2.5" />
+                50
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Канвас с графиком */}
-      <div ref={containerRef} className="relative flex-1 p-3 bg-[#0b0e14] min-h-[360px]">
+      <div ref={containerRef} className="relative flex-1 p-2.5 bg-[#0b0e14] min-h-[340px]">
         <canvas
           ref={canvasRef}
           onMouseMove={handleMouseMove}
@@ -496,21 +599,24 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
           className="w-full h-full block cursor-crosshair"
         />
 
-        {/* Всплывающая подсказка при наведении курсора */}
         {hoverData && (
           <div
             style={{
-              left: `${Math.min(hoverData.x + 12, (containerRef.current?.offsetWidth || 400) - 170)}px`,
-              top: `${Math.max(10, hoverData.y - 70)}px`
+              left: `${Math.min(hoverData.x + 14, (containerRef.current?.offsetWidth || 400) - 185)}px`,
+              top: `${Math.max(10, hoverData.y - 84)}px`
             }}
-            className="absolute pointer-events-none bg-[#141b27]/95 backdrop-blur-md border border-blue-500/50 rounded-lg p-2.5 shadow-2xl text-[11px] font-mono space-y-1 z-30"
+            className="absolute pointer-events-none bg-[#141b27]/95 backdrop-blur-md border border-blue-500/50 rounded-lg p-2.5 shadow-2xl text-[11px] font-mono tabular-nums space-y-1 z-30 min-w-[165px]"
           >
-            <div className="text-slate-300 font-bold border-b border-[#243044] pb-1">
+            <div className="text-slate-200 font-bold border-b border-[#243044] pb-1">
               Q = {hoverData.q} м³/сут
             </div>
             <div className="text-sky-400 flex items-center justify-between gap-3">
-              <span>H(сборки):</span>
+              <span>H сборки:</span>
               <span className="font-bold">{hoverData.h} м</span>
+            </div>
+            <div className="text-rose-400 flex items-center justify-between gap-3">
+              <span>TDH сети:</span>
+              <span className="font-bold">{hoverData.tdh} м</span>
             </div>
             <div className="text-amber-400 flex items-center justify-between gap-3">
               <span>Мощность:</span>
@@ -525,34 +631,36 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
       </div>
 
       {/* Инженерная легенда кривых */}
-      <div className="bg-[#182130] px-4 py-2 border-t border-[#243044] flex flex-wrap items-center justify-between text-[11px] text-slate-300">
-        <div className="flex flex-wrap items-center gap-4">
+      <div className="bg-[#182130] px-4 py-2 border-t border-[#243044] flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-300">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-1 bg-sky-400 rounded-full" />
-            <span>H(Q) Напор сборки ({totalStages} ст.)</span>
+            <span>H(Q) сборки</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-1 bg-rose-500 border-dashed rounded-full" />
-            <span>Кривая сети TDH(Q)</span>
+            <span className="w-3 h-0.5 border-t-2 border-dashed border-rose-500" />
+            <span>Сеть TDH(Q)</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-1 bg-amber-500 rounded-full" />
-            <span>N(Q) Мощность вала</span>
+            <span>N(Q)</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-1 bg-emerald-500 rounded-full" />
-            <span>η(Q) КПД насоса</span>
+            <span>η(Q)</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 bg-emerald-500/20 border border-emerald-500/50 rounded-xs" />
-            <span>Зона ОДР</span>
-          </div>
+          {intersectionPoint && (
+            <div className="flex items-center gap-1.5 text-rose-300 font-mono text-[10px]">
+              <span>◎ Баланс: {Math.round(intersectionPoint.q)} м³/сут</span>
+            </div>
+          )}
         </div>
 
-        <div className="text-[10px] text-slate-400 font-mono">
-          Давление на закрытую задвижку: {Math.round(result.shutoffHead)} м (~{((result.shutoffHead * result.mixDensity * 9.81) / 101325).toFixed(1)} атм)
+        <div className="text-[10px] text-slate-400 font-mono tabular-nums">
+          Напор при Q=0: {Math.round(result.shutoffHead)} м ({((result.shutoffHead * result.mixDensity * 9.81) / 101325).toFixed(1)} атм)
         </div>
       </div>
     </div>
   );
 };
+

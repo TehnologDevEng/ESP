@@ -11,6 +11,7 @@ import { CalculationsAudit } from './components/CalculationsAudit';
 import { OperationModeView } from './components/OperationModeView';
 import { ReportModal } from './components/ReportModal';
 import { EquipmentCatalogModal } from './components/EquipmentCatalogModal';
+import { AlertTriangle, ChevronDown } from 'lucide-react';
 import {
   WellParameters,
   FluidProperties,
@@ -53,6 +54,7 @@ export default function App() {
   const [selectedPumpId, setSelectedPumpId] = useState<string>('');
   const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
   const [isCatalogOpen, setIsCatalogOpen] = useState<boolean>(false);
+  const [showAllWarnings, setShowAllWarnings] = useState<boolean>(false);
 
   // Сохраненные пользователем скважины
   const [savedWells, setSavedWells] = useState<SavedWellScenario[]>(() => loadSavedWells());
@@ -247,10 +249,143 @@ export default function App() {
       <main className="no-print flex-1 p-3 md:p-4 max-w-[1720px] w-full mx-auto space-y-4">
         {appMode === 'sizing' ? (
           <>
+            {/* Сводная KPI-лента ключевых показателей подбора */}
+            <section
+              aria-label="Ключевые показатели подбора УЭЦН"
+              className="grid grid-cols-2 lg:grid-cols-4 gap-3"
+            >
+              <div className="bg-[#111722] border border-[#243044] rounded-xl px-3.5 py-2.5 flex flex-col justify-between">
+                <div className="text-[10px] uppercase tracking-wider text-slate-400">
+                  Активный насос
+                </div>
+                <div className="mt-1 flex items-baseline justify-between gap-2">
+                  <span className="text-sm font-bold text-white truncate">{activeResult.pump.name}</span>
+                  <span className="text-xs font-mono tabular-nums text-sky-400 shrink-0">
+                    {activeResult.totalStages} ст.
+                  </span>
+                </div>
+                <div className="mt-0.5 text-[11px] font-mono tabular-nums text-slate-400">
+                  {activeResult.numSections} {activeResult.numSections === 1 ? 'секц.' : 'секц.'} · L = {activeResult.totalPumpLength.toFixed(1)} м
+                </div>
+              </div>
+
+              <div className="bg-[#111722] border border-[#243044] rounded-xl px-3.5 py-2.5 flex flex-col justify-between">
+                <div className="text-[10px] uppercase tracking-wider text-slate-400">
+                  Напор TDH и приём
+                </div>
+                <div className="mt-1 flex items-baseline justify-between gap-2 font-mono tabular-nums">
+                  <span className="text-sm font-bold text-slate-100">
+                    {Math.round(activeResult.totalDynamicHead)} м
+                  </span>
+                  <span className="text-xs text-sky-400">
+                    Hсб {Math.round(activeResult.fullStringHeadAtQ)} м
+                  </span>
+                </div>
+                <div className="mt-0.5 text-[11px] font-mono tabular-nums text-slate-400">
+                  Pпр {activeResult.intakePressureAtm.toFixed(1)} атм · Газ {activeResult.freeGasIntakeFraction.toFixed(1)}%
+                </div>
+              </div>
+
+              <div className="bg-[#111722] border border-[#243044] rounded-xl px-3.5 py-2.5 flex flex-col justify-between">
+                <div className="text-[10px] uppercase tracking-wider text-slate-400">
+                  ПЭД и охлаждение
+                </div>
+                <div className="mt-1 flex items-baseline justify-between gap-2">
+                  <span className="text-sm font-bold text-slate-100 truncate">{activeResult.motor.name}</span>
+                  <span
+                    className={`text-xs font-mono tabular-nums shrink-0 ${
+                      activeResult.motorLoadPercent > 100 ? 'text-rose-400' : 'text-emerald-400'
+                    }`}
+                  >
+                    {activeResult.motorLoadPercent.toFixed(0)}%
+                  </span>
+                </div>
+                <div className="mt-0.5 text-[11px] font-mono tabular-nums flex items-center justify-between gap-2">
+                  <span
+                    className={
+                      activeResult.coolingStatus === 'OPTIMAL'
+                        ? 'text-emerald-400'
+                        : activeResult.coolingStatus === 'ACCEPTABLE'
+                          ? 'text-sky-400'
+                          : activeResult.coolingStatus === 'WARNING'
+                            ? 'text-amber-400'
+                            : 'text-rose-400'
+                    }
+                  >
+                    v = {activeResult.coolingVelocityMs.toFixed(2)} м/с
+                  </span>
+                  <span className="text-slate-400">
+                    {activeResult.shroudRequired ? 'Шрауд' : 'Без шрауда'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-[#111722] border border-[#243044] rounded-xl px-3.5 py-2.5 flex flex-col justify-between">
+                <div className="text-[10px] uppercase tracking-wider text-slate-400">
+                  Прочность вала и индекс
+                </div>
+                <div className="mt-1 flex items-baseline justify-between gap-2 font-mono tabular-nums">
+                  <span
+                    className={`text-sm font-bold ${
+                      activeResult.shaftOverload ? 'text-rose-400' : 'text-amber-300'
+                    }`}
+                  >
+                    Вал {activeResult.shaftLoadPercent.toFixed(0)}%
+                  </span>
+                  <span
+                    className={`text-xs font-bold ${
+                      activeResult.matchScore >= 80
+                        ? 'text-emerald-400'
+                        : activeResult.matchScore >= 60
+                          ? 'text-amber-400'
+                          : 'text-rose-400'
+                    }`}
+                  >
+                    Индекс {activeResult.matchScore}%
+                  </span>
+                </div>
+                <div className="mt-0.5 text-[11px] font-mono tabular-nums text-slate-400">
+                  {activeResult.fullStringShaftPowerKW.toFixed(1)} / {Math.round(activeResult.shaftLimitKW)} кВт
+                </div>
+              </div>
+            </section>
+
+            {/* Баннер критических предупреждений в верхней части экрана */}
+            {activeResult.warnings.length > 0 && (
+              <section
+                aria-label="Предупреждения по текущей компоновке"
+                className="bg-amber-950/25 border border-amber-700/50 rounded-xl px-3.5 py-2.5 text-xs"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-amber-300 font-semibold">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>
+                      Предупреждения по текущей сборке ({activeResult.warnings.length})
+                    </span>
+                  </div>
+                  {activeResult.warnings.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllWarnings(prev => !prev)}
+                      className="text-[11px] font-mono text-amber-300 hover:text-amber-200 flex items-center gap-1 transition-colors"
+                    >
+                      <span>{showAllWarnings ? 'Скрыть' : `Показать все (${activeResult.warnings.length})`}</span>
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAllWarnings ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
+                </div>
+                <ul className="mt-1.5 space-y-0.5 text-[11px] text-amber-200/90 pl-5 list-disc">
+                  {(showAllWarnings ? activeResult.warnings : activeResult.warnings.slice(0, 2)).map((w, idx) => (
+                    <li key={idx}>{w}</li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
             {/* Верхняя трехколоночная компоновка */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
               {/* Левая колонка: Ввод технологических данных */}
-              <div className="lg:col-span-3 xl:col-span-3 h-[720px]">
+              <div className="lg:col-span-3 xl:col-span-3 flex flex-col">
                 <SidebarInputs
                   well={well}
                   fluid={fluid}
@@ -273,17 +408,16 @@ export default function App() {
 
               {/* Центральная колонка: График сборки УЭЦН и карточки типоразмеров */}
               <div className="lg:col-span-6 xl:col-span-6 flex flex-col space-y-4">
-                {/* График суммарной сборки ступеней */}
-                <div className="h-[480px]">
+                <div className="h-[490px]">
                   <PerformanceChart
                     result={activeResult}
                     well={well}
                     completion={completion}
                     frequency={electrical.frequency}
+                    onChangeFrequency={(f) => setElectrical(prev => ({ ...prev, frequency: f }))}
                   />
                 </div>
 
-                {/* Карточки рекомендуемых типоразмеров */}
                 <PumpSelectorCards
                   candidates={candidates}
                   selectedPumpId={activeResult.pump.id}
@@ -292,8 +426,8 @@ export default function App() {
                 />
               </div>
 
-              {/* Правая колонка: Чертеж скважины и компоновки УЭЦН по-русски */}
-              <div className="lg:col-span-3 xl:col-span-3 h-[720px]">
+              {/* Правая колонка: Чертеж скважины и компоновки УЭЦН */}
+              <div className="lg:col-span-3 xl:col-span-3 flex flex-col">
                 <WellSchematic
                   result={activeResult}
                   well={well}
@@ -330,23 +464,20 @@ export default function App() {
       <footer className="no-print mt-6 bg-[#111722] border-t border-[#243044] text-xs text-slate-400">
         <div className="max-w-[1720px] mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="font-mono font-bold text-slate-200">ESP EXPERT v10.4 PRO</span>
-            </div>
-            <span className="hidden sm:inline text-slate-600">|</span>
+            <span className="font-mono font-bold text-slate-200">ESP EXPERT v10.4 PRO</span>
+            <span className="hidden sm:inline text-slate-600">·</span>
             <span className="text-slate-400 text-[11px]">
               Инженерно-технологический комплекс подбора погружного насосного оборудования УЭЦН
             </span>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3 font-mono text-[11px]">
-            <div className="bg-[#172030] px-3 py-1.5 rounded-lg border border-[#2d3d56] text-slate-300 flex items-center gap-2 shadow-sm">
+            <div className="bg-[#172030] px-3 py-1.5 rounded-lg border border-[#2d3d56] text-slate-300 flex items-center gap-2">
               <span className="text-slate-500">Разработчик:</span>
               <span className="font-bold text-sky-300">Носар Андрей</span>
             </div>
 
-            <div className="bg-[#172030] px-2.5 py-1.5 rounded-lg border border-[#243044] text-slate-400 hidden lg:block">
+            <div className="text-slate-400 hidden lg:block">
               ГОСТ 34771-2021 / API RP 11S2
             </div>
 
@@ -371,7 +502,17 @@ export default function App() {
         isOpen={isCatalogOpen}
         onClose={() => setIsCatalogOpen(false)}
         onSelectPump={(pumpId) => setSelectedPumpId(pumpId)}
+        onSelectMotor={(motorId) => {
+          setManualMotorId(motorId);
+          showStatus('Двигатель применён в расчёт');
+        }}
+        onSelectHydro={(hydroId) => {
+          setManualHydroId(hydroId);
+          showStatus('Гидрозащита применена в расчёт');
+        }}
         selectedPumpName={activeResult?.pump?.name}
+        selectedMotorName={activeResult?.motor?.name}
+        selectedHydroName={activeResult?.hydro?.name}
       />
     </div>
   );

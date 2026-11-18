@@ -10,7 +10,7 @@ import {
 } from '../types/esp';
 import { MOTOR_DATABASE, HYDRO_DATABASE } from '../data/motors';
 import { getTvdFactor } from '../utils/calculations';
-import { Settings2, Droplet, Cylinder, Zap, RotateCcw } from 'lucide-react';
+import { Settings2, Droplet, Cylinder, Zap, RotateCcw, ChevronDown } from 'lucide-react';
 import { SmartNumberInput } from './SmartNumberInput';
 
 interface SidebarInputsProps {
@@ -53,6 +53,9 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
   onChangeManualHydroId
 }) => {
   const [activeTab, setActiveTab] = useState<TabKey>('well');
+  const [showWellAdvanced, setShowWellAdvanced] = useState<boolean>(false);
+  const [showCompletionAdvanced, setShowCompletionAdvanced] = useState<boolean>(false);
+  const [showElectricalAdvanced, setShowElectricalAdvanced] = useState<boolean>(false);
 
   const updateWell = (field: keyof WellParameters, value: any) => {
     onChangeWell({ ...well, [field]: value });
@@ -127,34 +130,12 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
       </div>
 
       {/* Содержимое активной вкладки */}
-      <div className="p-4 flex-1 overflow-y-auto space-y-4">
+      <div className="p-3.5 flex-1 space-y-3">
         {/* ===================== ВКЛАДКА: СКВАЖИНА ===================== */}
         {activeTab === 'well' && (
           <div className="space-y-3">
             <div className="text-[11px] font-bold text-blue-400 uppercase tracking-wider">
-              Технологические параметры скважины
-            </div>
-
-            {/* Наименование скважины и месторождения */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[10px] text-slate-400 block mb-0.5">Скважина</label>
-                <input
-                  type="text"
-                  value={well.wellName}
-                  onChange={(e) => updateWell('wellName', e.target.value)}
-                  className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-slate-400 block mb-0.5">Месторождение</label>
-                <input
-                  type="text"
-                  value={well.field}
-                  onChange={(e) => updateWell('field', e.target.value)}
-                  className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
-                />
-              </div>
+              Основные параметры скважины
             </div>
 
             {/* Целевой дебит жидкости */}
@@ -196,34 +177,28 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
               />
             </div>
 
-            {/* Динамический уровень */}
-            <div>
-              <div className="flex items-center justify-between text-xs mb-1">
-                <label className="text-slate-300 font-medium">Динамический уровень (Hдин)</label>
-                <span className="font-mono text-sky-300 font-bold">{well.hDynamic} м</span>
+            {/* Динамический и статический уровни */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[11px] text-slate-300 block mb-1">Динамич. (Hдин)</label>
+                <SmartNumberInput
+                  value={well.hDynamic}
+                  onChange={(val) => updateWell('hDynamic', val)}
+                  min={0}
+                  max={4000}
+                  unit="м"
+                />
               </div>
-              <SmartNumberInput
-                value={well.hDynamic}
-                onChange={(val) => updateWell('hDynamic', val)}
-                min={0}
-                max={4000}
-                unit="м"
-              />
-            </div>
-
-            {/* Статический уровень */}
-            <div>
-              <div className="flex items-center justify-between text-xs mb-1">
-                <label className="text-slate-400">Статический уровень (Hстат)</label>
-                <span className="font-mono text-slate-300">{well.hStatic} м</span>
+              <div>
+                <label className="text-[11px] text-slate-400 block mb-1">Статич. (Hстат)</label>
+                <SmartNumberInput
+                  value={well.hStatic}
+                  onChange={(val) => updateWell('hStatic', val)}
+                  min={0}
+                  max={4000}
+                  unit="м"
+                />
               </div>
-              <SmartNumberInput
-                value={well.hStatic}
-                onChange={(val) => updateWell('hStatic', val)}
-                min={0}
-                max={4000}
-                unit="м"
-              />
             </div>
 
             {/* Давления: Буферное и Затрубное */}
@@ -250,40 +225,6 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
               </div>
             </div>
 
-            {/* Интервал перфорации и забой */}
-            <div className="grid grid-cols-3 gap-1.5 pt-1">
-              <div>
-                <label className="text-[10px] text-slate-400 block mb-0.5">Кровля пласта</label>
-                <SmartNumberInput
-                  value={well.perfTop}
-                  onChange={(val) => updateWell('perfTop', val)}
-                  min={0}
-                  max={6000}
-                  className="w-full bg-[#0b0e14] border border-[#243044] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-slate-400 block mb-0.5">Подошва</label>
-                <SmartNumberInput
-                  value={well.perfBottom}
-                  onChange={(val) => updateWell('perfBottom', val)}
-                  min={0}
-                  max={6000}
-                  className="w-full bg-[#0b0e14] border border-[#243044] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-slate-400 block mb-0.5">Забой</label>
-                <SmartNumberInput
-                  value={well.depthWell}
-                  onChange={(val) => updateWell('depthWell', val)}
-                  min={0}
-                  max={6000}
-                  className="w-full bg-[#0b0e14] border border-[#243044] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-blue-500"
-                />
-              </div>
-            </div>
-
             {/* Пластовое давление и зенитный угол (MD/TVD) */}
             <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#1e2738]">
               <div>
@@ -298,7 +239,7 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] text-slate-400">Зенитный угол</label>
+                  <label className="text-[11px] text-slate-400">Угол</label>
                   <span className="text-[10px] font-mono text-sky-400">
                     TVD {Math.round(well.depthPump * tvdFactor)} м
                   </span>
@@ -313,28 +254,99 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
               </div>
             </div>
 
-            {/* Температуры: пласта и устья */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">T пласта</label>
-                <SmartNumberInput
-                  value={well.tReservoir}
-                  onChange={(val) => updateWell('tReservoir', val)}
-                  min={5}
-                  max={220}
-                  unit="°C"
-                />
-              </div>
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">T на устье</label>
-                <SmartNumberInput
-                  value={well.tWellhead}
-                  onChange={(val) => updateWell('tWellhead', val)}
-                  min={-30}
-                  max={90}
-                  unit="°C"
-                />
-              </div>
+            {/* Сворачиваемая секция: Паспорт, перфорация и температуры */}
+            <div className="pt-1 border-t border-[#1e2738]">
+              <button
+                type="button"
+                onClick={() => setShowWellAdvanced(prev => !prev)}
+                className="w-full py-1.5 px-2.5 rounded-lg bg-[#0e141f] hover:bg-[#182130] border border-[#243044] flex items-center justify-between text-[11px] text-slate-300 transition-colors"
+              >
+                <span className="font-medium truncate">
+                  Доп. параметры ({well.wellName} · Tпл {well.tReservoir}°C)
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${showWellAdvanced ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showWellAdvanced && (
+                <div className="mt-2.5 space-y-2.5 pt-1">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-slate-400 block mb-0.5">Скважина</label>
+                      <input
+                        type="text"
+                        value={well.wellName}
+                        onChange={(e) => updateWell('wellName', e.target.value)}
+                        className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400 block mb-0.5">Месторождение</label>
+                      <input
+                        type="text"
+                        value={well.field}
+                        onChange={(e) => updateWell('field', e.target.value)}
+                        className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <div>
+                      <label className="text-[10px] text-slate-400 block mb-0.5">Кровля</label>
+                      <SmartNumberInput
+                        value={well.perfTop}
+                        onChange={(val) => updateWell('perfTop', val)}
+                        min={0}
+                        max={6000}
+                        className="w-full bg-[#0b0e14] border border-[#243044] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400 block mb-0.5">Подошва</label>
+                      <SmartNumberInput
+                        value={well.perfBottom}
+                        onChange={(val) => updateWell('perfBottom', val)}
+                        min={0}
+                        max={6000}
+                        className="w-full bg-[#0b0e14] border border-[#243044] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400 block mb-0.5">Забой</label>
+                      <SmartNumberInput
+                        value={well.depthWell}
+                        onChange={(val) => updateWell('depthWell', val)}
+                        min={0}
+                        max={6000}
+                        className="w-full bg-[#0b0e14] border border-[#243044] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] text-slate-400 block mb-1">T пласта</label>
+                      <SmartNumberInput
+                        value={well.tReservoir}
+                        onChange={(val) => updateWell('tReservoir', val)}
+                        min={5}
+                        max={220}
+                        unit="°C"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-slate-400 block mb-1">T на устье</label>
+                      <SmartNumberInput
+                        value={well.tWellhead}
+                        onChange={(val) => updateWell('tWellhead', val)}
+                        min={-30}
+                        max={90}
+                        unit="°C"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -491,52 +503,68 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
               </select>
             </div>
 
-            {/* Внутренний диаметр НКТ и шероховатость */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">Dвн трубы НКТ</label>
-                <SmartNumberInput
-                  value={completion.tubingInnerDiam}
-                  onChange={(val) => updateCompletion('tubingInnerDiam', val)}
-                  min={30}
-                  max={150}
-                  unit="мм"
-                />
-              </div>
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">Шероховатость Δ</label>
-                <SmartNumberInput
-                  value={completion.tubingRoughness}
-                  onChange={(val) => updateCompletion('tubingRoughness', val)}
-                  min={0.005}
-                  max={0.5}
-                  unit="мм"
-                />
-              </div>
-            </div>
+            {/* Сворачиваемые доп. параметры конструкции и гидравлики НКТ */}
+            <div className="pt-1 border-t border-[#1e2738]">
+              <button
+                type="button"
+                onClick={() => setShowCompletionAdvanced(prev => !prev)}
+                className="w-full py-1.5 px-2.5 rounded-lg bg-[#0e141f] hover:bg-[#182130] border border-[#243044] flex items-center justify-between text-[11px] text-slate-300 transition-colors"
+              >
+                <span className="font-medium truncate">
+                  Геометрия и шероховатость (Dвн {completion.tubingInnerDiam} мм · Δ {completion.tubingRoughness})
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${showCompletionAdvanced ? 'rotate-180' : ''}`} />
+              </button>
 
-            {/* Башмак кондуктора и башмак колонны */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">Кондуктор</label>
-                <SmartNumberInput
-                  value={completion.conductorDepth}
-                  onChange={(val) => updateCompletion('conductorDepth', val)}
-                  min={0}
-                  max={2500}
-                  unit="м"
-                />
-              </div>
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">Башмак колонны</label>
-                <SmartNumberInput
-                  value={completion.casingShoeDepth}
-                  onChange={(val) => updateCompletion('casingShoeDepth', val)}
-                  min={0}
-                  max={6000}
-                  unit="м"
-                />
-              </div>
+              {showCompletionAdvanced && (
+                <div className="mt-2.5 space-y-2.5 pt-1">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] text-slate-400 block mb-1">Dвн трубы НКТ</label>
+                      <SmartNumberInput
+                        value={completion.tubingInnerDiam}
+                        onChange={(val) => updateCompletion('tubingInnerDiam', val)}
+                        min={30}
+                        max={150}
+                        unit="мм"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-slate-400 block mb-1">Шероховатость Δ</label>
+                      <SmartNumberInput
+                        value={completion.tubingRoughness}
+                        onChange={(val) => updateCompletion('tubingRoughness', val)}
+                        min={0.005}
+                        max={0.5}
+                        unit="мм"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] text-slate-400 block mb-1">Кондуктор</label>
+                      <SmartNumberInput
+                        value={completion.conductorDepth}
+                        onChange={(val) => updateCompletion('conductorDepth', val)}
+                        min={0}
+                        max={2500}
+                        unit="м"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-slate-400 block mb-1">Башмак колонны</label>
+                      <SmartNumberInput
+                        value={completion.casingShoeDepth}
+                        onChange={(val) => updateCompletion('casingShoeDepth', val)}
+                        min={0}
+                        max={6000}
+                        unit="м"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -615,24 +643,10 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
               />
             </div>
 
-            {/* Марка кабеля */}
-            <div>
-              <label className="text-xs text-slate-400 block mb-1">Марка кабеля</label>
-              <select
-                value={electrical.cableType}
-                onChange={(e) => updateElectrical('cableType', e.target.value)}
-                className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none"
-              >
-                <option value="КПсБП-130">КПсБП-130 (Бронированный, до 130°C)</option>
-                <option value="КПбП-120">КПбП-120 (Стандартный, до 120°C)</option>
-                <option value="КПсТБП-150">КПсТБП-150 (Термостойкий, до 150°C)</option>
-              </select>
-            </div>
-
             {/* Выбор типа и модели двигателя ПЭД / ВПЭД */}
             <div className="pt-2 border-t border-[#1e2738] space-y-2.5">
               <div className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
-                Двигатель (ПЭД / ВПЭД) и гидрозащита
+                Двигатель (ПЭД / ВПЭД)
               </div>
 
               <div className="grid grid-cols-3 gap-1.5">
@@ -679,27 +693,58 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
                   ))}
                 </select>
               </div>
+            </div>
 
-              <div>
-                <div className="flex items-center justify-between text-[11px] mb-1">
-                  <label className="text-slate-400">Протектор гидрозащиты</label>
-                  <span className="font-mono text-[10px] text-sky-400">
-                    {manualHydroId ? 'Ручной' : 'Авто'}
-                  </span>
+            {/* Сворачиваемая секция: Марка кабеля и Протектор гидрозащиты */}
+            <div className="pt-1 border-t border-[#1e2738]">
+              <button
+                type="button"
+                onClick={() => setShowElectricalAdvanced(prev => !prev)}
+                className="w-full py-1.5 px-2.5 rounded-lg bg-[#0e141f] hover:bg-[#182130] border border-[#243044] flex items-center justify-between text-[11px] text-slate-300 transition-colors"
+              >
+                <span className="font-medium truncate">
+                  Кабель и гидрозащита ({electrical.cableType} · {activeHydro.name})
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${showElectricalAdvanced ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showElectricalAdvanced && (
+                <div className="mt-2.5 space-y-2.5 pt-1">
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Марка кабеля</label>
+                    <select
+                      value={electrical.cableType}
+                      onChange={(e) => updateElectrical('cableType', e.target.value)}
+                      className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none"
+                    >
+                      <option value="КПсБП-130">КПсБП-130 (Бронированный, до 130°C)</option>
+                      <option value="КПбП-120">КПбП-120 (Стандартный, до 120°C)</option>
+                      <option value="КПсТБП-150">КПсТБП-150 (Термостойкий, до 150°C)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between text-[11px] mb-1">
+                      <label className="text-slate-400">Протектор гидрозащиты</label>
+                      <span className="font-mono text-[10px] text-sky-400">
+                        {manualHydroId ? 'Ручной' : 'Авто'}
+                      </span>
+                    </div>
+                    <select
+                      value={manualHydroId}
+                      onChange={(e) => onChangeManualHydroId(e.target.value)}
+                      className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-white focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="">Авто: {activeHydro.name} (D{activeHydro.outerDiam}, {activeHydro.axialLoadKg} кгс)</option>
+                      {HYDRO_DATABASE.filter(h => h.outerDiam <= dCasInMm - 4).map((h) => (
+                        <option key={h.id} value={h.id}>
+                          {h.name} · D{h.outerDiam} · {h.axialLoadKg} кгс · до {h.tempMaxC}°C
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-                <select
-                  value={manualHydroId}
-                  onChange={(e) => onChangeManualHydroId(e.target.value)}
-                  className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-white focus:outline-none focus:border-blue-500"
-                >
-                  <option value="">Авто: {activeHydro.name} (D{activeHydro.outerDiam}, {activeHydro.axialLoadKg} кгс)</option>
-                  {HYDRO_DATABASE.filter(h => h.outerDiam <= dCasInMm - 4).map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {h.name} · D{h.outerDiam} · {h.axialLoadKg} кгс · до {h.tempMaxC}°C
-                    </option>
-                  ))}
-                </select>
-              </div>
+              )}
             </div>
           </div>
         )}

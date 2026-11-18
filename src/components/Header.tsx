@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { PRESETS, WellPreset } from '../data/presets';
 import { CalculationResult, ApplicationMode, SavedWellScenario } from '../types/esp';
 import {
@@ -11,7 +11,9 @@ import {
   Save,
   Trash2,
   Download,
-  Upload
+  Upload,
+  FolderOpen,
+  ChevronDown
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -32,7 +34,6 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  activeResult,
   appMode,
   activeScenarioId,
   savedWells,
@@ -48,7 +49,26 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCatalog
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const projectMenuRef = useRef<HTMLDivElement>(null);
+  const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
   const isSavedScenarioActive = savedWells.some(s => s.id === activeScenarioId);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (projectMenuRef.current && !projectMenuRef.current.contains(e.target as Node)) {
+        setIsProjectMenuOpen(false);
+      }
+    };
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsProjectMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, []);
 
   const handleScenarioChange = (val: string) => {
     const preset = PRESETS.find(pr => pr.id === val);
@@ -68,73 +88,70 @@ export const Header: React.FC<HeaderProps> = ({
       onImportJson(file);
     }
     e.target.value = '';
+    setIsProjectMenuOpen(false);
   };
 
   return (
-    <header className="no-print bg-[#111722] border-b border-[#243044] px-4 py-3 select-none">
+    <header className="no-print bg-[#111722] border-b border-[#243044] px-4 py-2.5 select-none">
       <div className="max-w-[1720px] mx-auto flex flex-wrap items-center justify-between gap-3">
-        {/* Логотип и название комплекса */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-sky-400 p-0.5 shadow-lg flex items-center justify-center shrink-0">
-            <Gauge className="w-5 h-5 text-white" />
+        {/* Бренд и название комплекса */}
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center shrink-0">
+            <Gauge className="w-4 h-4 text-white" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-extrabold text-white tracking-tight whitespace-nowrap">
-                ESP EXPERT <span className="text-blue-400 font-mono text-xs font-bold">v10.4 PRO</span>
+              <h1 className="text-sm font-extrabold text-white tracking-tight whitespace-nowrap">
+                ESP EXPERT
               </h1>
-              <span className="px-1.5 py-0.5 rounded bg-blue-950 text-blue-300 font-mono text-[9px] border border-blue-800 whitespace-nowrap">
-                INDUSTRIAL CAD
-              </span>
-              <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 font-mono text-[9px] border border-emerald-800 whitespace-nowrap">
-                НОВЫЕ ТЕХНОЛОГИИ · 2026
+              <span className="text-[11px] font-mono text-slate-400 whitespace-nowrap">
+                · Новые Технологии 2026
               </span>
             </div>
-            <p className="text-[11px] text-slate-400">
-              Комплексный инженерный расчет и подбор установок электроцентробежных насосов (УЭЦН)
+            <p className="text-[11px] text-slate-400 hidden sm:block whitespace-nowrap">
+              Инженерный подбор и расчёт УЭЦН
             </p>
           </div>
         </div>
 
         {/* Переключатель режимов: Подбор (CAD) <-> Эксплуатация (ЧРП) */}
-        <div className="flex items-center p-1 bg-[#0b0f17] border border-[#243044] rounded-2xl shadow-inner">
+        <div className="flex items-center p-1 bg-[#0b0f17] border border-[#243044] rounded-xl shrink-0">
           <button
+            type="button"
             onClick={() => onChangeAppMode('sizing')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 ${
               appMode === 'sizing'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-900/40'
+                ? 'bg-blue-600 text-white'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-[#151c28]'
             }`}
           >
             <Wrench className="w-3.5 h-3.5" />
-            <span>Подбор УЭЦН (CAD)</span>
+            <span>Подбор УЭЦН</span>
           </button>
 
           <button
+            type="button"
             onClick={() => onChangeAppMode('operation')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all relative whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 ${
               appMode === 'operation'
-                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/40'
+                ? 'bg-emerald-600 text-white'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-[#151c28]'
             }`}
           >
             <Radio className="w-3.5 h-3.5" />
-            <span>Режим эксплуатации (ЧРП)</span>
-            {appMode !== 'operation' && (
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            )}
+            <span>Эксплуатация (ЧРП)</span>
           </button>
         </div>
 
-        {/* Выбор сценария + Мои скважины + JSON экспорт/импорт */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <div className="flex items-center gap-2 bg-[#0e141f] px-2.5 py-1.5 rounded-xl border border-[#243044]">
+        {/* Выбор сценария + Выпадающее меню «Проект» */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 bg-[#0e141f] px-2.5 py-1.5 rounded-lg border border-[#243044]">
             <HardDrive className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-            <span className="text-xs text-slate-300 font-medium hidden md:inline">Скважина:</span>
             <select
+              aria-label="Выбор скважины или сценария"
               value={activeScenarioId}
               onChange={(e) => handleScenarioChange(e.target.value)}
-              className="bg-transparent text-xs font-mono text-blue-300 focus:outline-none cursor-pointer pr-1 max-w-[210px]"
+              className="bg-transparent text-xs font-mono text-sky-300 focus:outline-none cursor-pointer pr-1 max-w-[200px]"
             >
               {activeScenarioId === '__imported__' && (
                 <option value="__imported__" className="bg-[#141b27] text-amber-300">
@@ -160,90 +177,109 @@ export const Header: React.FC<HeaderProps> = ({
             </select>
           </div>
 
-          <button
-            onClick={onSaveCurrentWell}
-            title={isSavedScenarioActive ? 'Обновить сохранённую скважину' : 'Сохранить текущую скважину в «Мои скважины»'}
-            className="px-2.5 py-1.5 bg-[#151d2b] hover:bg-emerald-950/70 text-emerald-300 border border-emerald-700/40 hover:border-emerald-500/60 text-xs font-medium rounded-xl flex items-center gap-1 transition-all whitespace-nowrap"
-          >
-            <Save className="w-3.5 h-3.5" />
-            <span className="hidden xl:inline">{isSavedScenarioActive ? 'Обновить' : 'Сохранить'}</span>
-          </button>
-
-          {isSavedScenarioActive && (
+          <div className="relative" ref={projectMenuRef}>
             <button
-              onClick={() => onDeleteSavedWell(activeScenarioId)}
-              title="Удалить выбранную сохранённую скважину"
-              className="px-2 py-1.5 bg-[#151d2b] hover:bg-red-950/70 text-red-400 border border-red-800/40 hover:border-red-500/60 text-xs rounded-xl flex items-center transition-all"
+              type="button"
+              onClick={() => setIsProjectMenuOpen(prev => !prev)}
+              aria-expanded={isProjectMenuOpen}
+              className="px-2.5 py-1.5 bg-[#151d2b] hover:bg-[#1e293d] text-slate-200 border border-[#243044] text-xs font-medium rounded-lg flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <FolderOpen className="w-3.5 h-3.5 text-sky-400" />
+              <span>Проект</span>
+              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isProjectMenuOpen ? 'rotate-180' : ''}`} />
             </button>
-          )}
 
-          <button
-            onClick={onExportJson}
-            title="Скачать проект скважины в JSON"
-            className="px-2 py-1.5 bg-[#151d2b] hover:bg-[#1e293d] text-slate-300 border border-[#243044] text-[11px] font-mono rounded-xl flex items-center gap-1 transition-all whitespace-nowrap"
-          >
-            <Download className="w-3.5 h-3.5 text-sky-400" />
-            <span className="hidden sm:inline">JSON</span>
-          </button>
+            {isProjectMenuOpen && (
+              <div className="absolute right-0 mt-1.5 w-60 bg-[#141b27] border border-[#2d3d56] rounded-xl shadow-2xl py-1.5 z-50 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSaveCurrentWell();
+                    setIsProjectMenuOpen(false);
+                  }}
+                  className="w-full px-3 py-2 text-left text-emerald-300 hover:bg-[#1d2738] flex items-center gap-2 transition-colors"
+                >
+                  <Save className="w-3.5 h-3.5 shrink-0" />
+                  <span>{isSavedScenarioActive ? 'Обновить в «Мои скважины»' : 'Сохранить в «Мои скважины»'}</span>
+                </button>
 
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            title="Загрузить проект скважины из JSON"
-            className="px-2 py-1.5 bg-[#151d2b] hover:bg-[#1e293d] text-slate-300 border border-[#243044] text-[11px] font-mono rounded-xl flex items-center gap-1 transition-all whitespace-nowrap"
-          >
-            <Upload className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden sm:inline">Импорт</span>
-          </button>
+                {isSavedScenarioActive && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onDeleteSavedWell(activeScenarioId);
+                      setIsProjectMenuOpen(false);
+                    }}
+                    className="w-full px-3 py-2 text-left text-rose-400 hover:bg-rose-950/50 flex items-center gap-2 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>Удалить сохранённую скважину</span>
+                  </button>
+                )}
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json,application/json"
-            onChange={handleFilePick}
-            className="hidden"
-          />
+                <div className="my-1 border-t border-[#243044]" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    onExportJson();
+                    setIsProjectMenuOpen(false);
+                  }}
+                  className="w-full px-3 py-2 text-left text-slate-200 hover:bg-[#1d2738] flex items-center gap-2 transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                  <span>Экспорт проекта в JSON</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full px-3 py-2 text-left text-slate-200 hover:bg-[#1d2738] flex items-center gap-2 transition-colors"
+                >
+                  <Upload className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>Импорт проекта из JSON</span>
+                </button>
+              </div>
+            )}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json,application/json"
+              onChange={handleFilePick}
+              className="hidden"
+            />
+          </div>
         </div>
 
-        {/* Сводные индикаторы и кнопки каталога / техкарты */}
-        <div className="flex items-center gap-2.5">
+        {/* Каталог и Техкарта */}
+        <div className="flex items-center gap-2 shrink-0">
           {statusMessage && (
             <span
               className={`px-2.5 py-1 rounded-lg text-[11px] font-mono border whitespace-nowrap ${
                 statusMessage.type === 'ok'
                   ? 'bg-emerald-950/90 text-emerald-300 border-emerald-700/60'
-                  : 'bg-red-950/90 text-red-300 border-red-700/60'
+                  : 'bg-rose-950/90 text-rose-300 border-rose-700/60'
               }`}
             >
               {statusMessage.text}
             </span>
           )}
 
-          {/* Индикатор выбранного типоразмера */}
-          <div className="hidden 2xl:flex items-center gap-2 bg-[#0e141f] px-3 py-1.5 rounded-xl border border-[#243044] text-xs font-mono">
-            <span className="text-slate-400">Сборка:</span>
-            <span className="font-bold text-sky-400">{activeResult.pump.name}</span>
-            <span className="text-slate-500">|</span>
-            <span className="text-emerald-400 font-bold">{activeResult.totalStages} ст.</span>
-            <span className="text-slate-500">|</span>
-            <span className="text-slate-300">{Math.round(activeResult.fullStringHeadAtQ)} м</span>
-          </div>
-
-          {/* Кнопка онлайн-каталога оборудования 2026 */}
           <button
+            type="button"
             onClick={onOpenCatalog}
-            className="px-3 py-1.5 bg-[#1a2332] hover:bg-[#243044] text-sky-300 border border-sky-500/30 hover:border-sky-400 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-all shadow-sm active:scale-95 whitespace-nowrap"
+            className="px-3 py-1.5 bg-[#1a2332] hover:bg-[#243044] text-sky-300 border border-[#2d3d56] hover:border-sky-400 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0"
             title="Открыть полный каталог оборудования ООО «Новые Технологии» на 2026 год"
           >
             <Layers className="w-3.5 h-3.5 text-sky-400" />
             <span>Каталог НТ · 2026</span>
           </button>
 
-          {/* Кнопка отчета / техкарты */}
           <button
+            type="button"
             onClick={onOpenReport}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-all shadow-md active:scale-95 whitespace-nowrap"
+            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0"
           >
             <FileText className="w-3.5 h-3.5" />
             <span>Техкарта УЭЦН</span>
@@ -253,3 +289,4 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
+

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CalculationResult, WellParameters, CompletionGeometry } from '../types/esp';
-import { ZoomIn, ZoomOut, Info, ShieldAlert, CheckCircle2, ChevronRight, Layers } from 'lucide-react';
+import { ZoomIn, ZoomOut, Layers, X } from 'lucide-react';
 
 interface WellSchematicProps {
   result: CalculationResult;
@@ -8,10 +8,13 @@ interface WellSchematicProps {
   completion: CompletionGeometry;
 }
 
+type NodeKey = 'pump' | 'sep' | 'protector' | 'motor' | 'tms';
+
 export const WellSchematic: React.FC<WellSchematicProps> = ({ result, well, completion }) => {
   const [viewMode, setViewMode] = useState<'profile' | 'detail'>('profile');
   const [zoomBottomhole, setZoomBottomhole] = useState<boolean>(false);
   const [hoveredPart, setHoveredPart] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] = useState<NodeKey | null>(null);
 
   const { pump, motor, hydro, totalStages, numSections } = result;
 
@@ -69,54 +72,83 @@ export const WellSchematic: React.FC<WellSchematicProps> = ({ result, well, comp
     result.coolingStatus === 'ACCEPTABLE' ? '#3b82f6' :
     result.coolingStatus === 'WARNING' ? '#f59e0b' : '#ef4444';
 
+  const selectedNodeInfo: Record<NodeKey, { title: string; summary: string; detail: string }> = {
+    pump: {
+      title: `${pump.name} (${totalStages} ст., ${numSections} секц.)`,
+      summary: `Ø${pump.outerDiam} мм · L = ${result.totalPumpLength.toFixed(1)} м · Напор ${Math.round(result.fullStringHeadAtQ)} м`,
+      detail: `Ступени: ${result.stagesPerSection.join(' + ')} ст. · Вал ${result.shaftLoadPercent.toFixed(0)}%`
+    },
+    sep: {
+      title: result.gasSeparatorRequired ? result.gasSeparatorType : 'Входной модуль (ВМ)',
+      summary: `Газ на приеме: ${result.freeGasIntakeFraction.toFixed(1)}% · Коэфф. напора ×${result.gasHeadDegradationFactor.toFixed(2)}`,
+      detail: result.gasSeparatorRequired ? 'Отделение свободного газа в затрубное пространство' : 'Фильтрующая приемная сетка'
+    },
+    protector: {
+      title: `Гидрозащита ${hydro.name}`,
+      summary: `Ø${hydro.outerDiam} мм · L = ${hydro.lengthM} м · ${hydro.massKg} кг`,
+      detail: `Осевая нагрузка до ${hydro.axialLoadKg} кгс · Tmax = ${hydro.tempMaxC}°C`
+    },
+    motor: {
+      title: `${motor.name} (${motor.powerRatingKW} кВт)`,
+      summary: `Загрузка ${result.motorLoadPercent.toFixed(0)}% · U=${motor.voltageV} В · I=${motor.currentA} А`,
+      detail: `Обдув ${result.coolingVelocityMs.toFixed(2)} м/с · ${result.shroudRequired ? 'нужен шрауд' : 'шрауд не нужен'}`
+    },
+    tms: {
+      title: 'Блок телеметрии ТМСН-3',
+      summary: `Pпр = ${result.intakePressureAtm.toFixed(1)} атм · Замер P, T, вибрации`,
+      detail: 'Непрерывный контроль изоляции и теплового состояния ПЭД'
+    }
+  };
+
   return (
     <div className="bg-[#131924] border border-[#243044] rounded-xl overflow-hidden flex flex-col h-full shadow-xl">
       {/* Заголовок и переключатель видов */}
-      <div className="bg-[#182130] px-4 py-3 border-b border-[#243044] flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-blue-400" />
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-200">
-            Конструкция скважины
+      <div className="bg-[#182130] px-4 py-2.5 border-b border-[#243044] flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Layers className="w-4 h-4 text-blue-400 shrink-0" />
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-200 whitespace-nowrap">
+            Схема скважины
           </span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/40 text-blue-300 font-mono border border-blue-700/50">
-            {well.wellName}
+          <span className="text-[11px] font-mono text-sky-300 truncate">
+            · {well.wellName}
           </span>
         </div>
 
-        {/* Переключатель вида */}
         <div className="flex items-center bg-[#0e141f] p-0.5 rounded-lg border border-[#243044]">
           <button
+            type="button"
             onClick={() => setViewMode('profile')}
-            className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-all ${
+            className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
               viewMode === 'profile'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            Ствол скважины
+            Ствол
           </button>
           <button
+            type="button"
             onClick={() => setViewMode('detail')}
-            className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-all ${
+            className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
               viewMode === 'detail'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            Компоновка УЭЦН
+            Компоновка
           </button>
         </div>
       </div>
 
       {/* Основная область схемы */}
-      <div className="p-4 flex-1 flex flex-col justify-between overflow-y-auto">
+      <div className="p-3.5 flex-1 flex flex-col justify-between">
         {viewMode === 'profile' ? (
-          <div className="relative flex justify-center items-center">
-            {/* SVG Чертеж скважины */}
-            <svg
-              className="w-full max-w-[340px] h-[580px] bg-[#0b0e14] rounded-lg border border-[#1e2738]"
-              viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-            >
+          <div className="space-y-2.5">
+            <div className="relative flex justify-center items-center">
+              <svg
+                className="w-full max-w-[340px] h-[495px] bg-[#0b0e14] rounded-lg border border-[#1e2738]"
+                viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+              >
               <defs>
                 {/* Штриховка цементного кольца */}
                 <pattern id="cementHatch" width="6" height="6" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
@@ -305,77 +337,101 @@ export const WellSchematic: React.FC<WellSchematicProps> = ({ result, well, comp
                 );
               })}
 
-              {/* Компоновка УЭЦН в стволе скважины */}
+              {/* Интерактивная компоновка УЭЦН в стволе скважины */}
               <g id="esp-string-group">
                 {/* 1. Насосная часть (ЭЦН) */}
-                <rect
-                  x={centerX - 13}
-                  y={yPumpIntake - 22}
-                  width="26"
-                  height="22"
-                  fill="#0284c7"
-                  stroke="#38bdf8"
-                  strokeWidth="1.5"
-                  rx="2"
-                />
-                <text x={centerX} y={yPumpIntake - 8} textAnchor="middle" fill="#ffffff" fontSize="7" fontWeight="bold">
-                  ЭЦН ({totalStages} ст.)
-                </text>
+                <g
+                  className="cursor-pointer"
+                  onClick={() => setSelectedNode(prev => (prev === 'pump' ? null : 'pump'))}
+                >
+                  <rect
+                    x={centerX - 13}
+                    y={yPumpIntake - 22}
+                    width="26"
+                    height="22"
+                    fill="#0284c7"
+                    stroke={selectedNode === 'pump' ? '#fde047' : '#38bdf8'}
+                    strokeWidth={selectedNode === 'pump' ? 2.2 : 1.5}
+                    rx="2"
+                  />
+                  <text x={centerX} y={yPumpIntake - 8} textAnchor="middle" fill="#ffffff" fontSize="7" fontWeight="bold">
+                    ЭЦН ({totalStages} ст.)
+                  </text>
+                </g>
 
                 {/* 2. Приемный модуль / Газосепаратор */}
-                <rect
-                  x={centerX - 12}
-                  y={yPumpIntake}
-                  width="24"
-                  height="10"
-                  fill="#d97706"
-                  stroke="#fbbf24"
-                  strokeWidth="1"
-                  rx="1"
-                />
-                {/* Сетка заборных отверстий */}
-                <line x1={centerX - 8} y1={yPumpIntake + 5} x2={centerX + 8} y2={yPumpIntake + 5} stroke="#1e293b" strokeWidth="2" strokeDasharray="2,2" />
+                <g
+                  className="cursor-pointer"
+                  onClick={() => setSelectedNode(prev => (prev === 'sep' ? null : 'sep'))}
+                >
+                  <rect
+                    x={centerX - 12}
+                    y={yPumpIntake}
+                    width="24"
+                    height="10"
+                    fill="#d97706"
+                    stroke={selectedNode === 'sep' ? '#fde047' : '#fbbf24'}
+                    strokeWidth={selectedNode === 'sep' ? 2 : 1}
+                    rx="1"
+                  />
+                  <line x1={centerX - 8} y1={yPumpIntake + 5} x2={centerX + 8} y2={yPumpIntake + 5} stroke="#1e293b" strokeWidth="2" strokeDasharray="2,2" />
+                </g>
 
                 {/* 3. Гидрозащита (Протектор) */}
-                <rect
-                  x={centerX - 11}
-                  y={yPumpIntake + 10}
-                  width="22"
-                  height="12"
-                  fill="#475569"
-                  stroke="#94a3b8"
-                  strokeWidth="1"
-                />
+                <g
+                  className="cursor-pointer"
+                  onClick={() => setSelectedNode(prev => (prev === 'protector' ? null : 'protector'))}
+                >
+                  <rect
+                    x={centerX - 11}
+                    y={yPumpIntake + 10}
+                    width="22"
+                    height="12"
+                    fill="#475569"
+                    stroke={selectedNode === 'protector' ? '#fde047' : '#94a3b8'}
+                    strokeWidth={selectedNode === 'protector' ? 2 : 1}
+                  />
+                </g>
 
                 {/* 4. Погружной электродвигатель (ПЭД) */}
-                <rect
-                  x={centerX - 13}
-                  y={yPumpIntake + 22}
-                  width="26"
-                  height="34"
-                  fill={coolingColor}
-                  stroke="#ffffff"
-                  strokeWidth="1.5"
-                  rx="2"
-                />
-                <text x={centerX} y={yPumpIntake + 42} textAnchor="middle" fill="#ffffff" fontSize="7" fontWeight="bold">
-                  ПЭД {motor.powerRatingKW} кВт
-                </text>
+                <g
+                  className="cursor-pointer"
+                  onClick={() => setSelectedNode(prev => (prev === 'motor' ? null : 'motor'))}
+                >
+                  <rect
+                    x={centerX - 13}
+                    y={yPumpIntake + 22}
+                    width="26"
+                    height="34"
+                    fill={coolingColor}
+                    stroke={selectedNode === 'motor' ? '#fde047' : '#ffffff'}
+                    strokeWidth={selectedNode === 'motor' ? 2.2 : 1.5}
+                    rx="2"
+                  />
+                  <text x={centerX} y={yPumpIntake + 42} textAnchor="middle" fill="#ffffff" fontSize="7" fontWeight="bold">
+                    ПЭД {motor.powerRatingKW} кВт
+                  </text>
+                </g>
 
                 {/* 5. Блок телеметрии ТМС */}
-                <rect
-                  x={centerX - 9}
-                  y={yPumpIntake + 56}
-                  width="18"
-                  height="8"
-                  fill="#7c3aed"
-                  stroke="#a78bfa"
-                  strokeWidth="1"
-                  rx="1"
-                />
-                <text x={centerX} y={yPumpIntake + 63} textAnchor="middle" fill="#ffffff" fontSize="5.5" fontWeight="bold">
-                  ТМС
-                </text>
+                <g
+                  className="cursor-pointer"
+                  onClick={() => setSelectedNode(prev => (prev === 'tms' ? null : 'tms'))}
+                >
+                  <rect
+                    x={centerX - 9}
+                    y={yPumpIntake + 56}
+                    width="18"
+                    height="8"
+                    fill="#7c3aed"
+                    stroke={selectedNode === 'tms' ? '#fde047' : '#a78bfa'}
+                    strokeWidth={selectedNode === 'tms' ? 2 : 1}
+                    rx="1"
+                  />
+                  <text x={centerX} y={yPumpIntake + 63} textAnchor="middle" fill="#ffffff" fontSize="5.5" fontWeight="bold">
+                    ТМС
+                  </text>
+                </g>
               </g>
 
               {/* Выноска приема УЭЦН с анти-наложением */}
@@ -446,27 +502,60 @@ export const WellSchematic: React.FC<WellSchematicProps> = ({ result, well, comp
             </div>
 
             {/* Легенда и информационный блок охлаждения прямо на схеме */}
-            <div className="absolute top-2 right-2 bg-[#0e141f]/90 backdrop-blur-sm border border-[#243044] rounded-lg p-2.5 max-w-[155px] text-[10px] space-y-1.5 shadow-lg">
+            <div className="absolute top-2 right-2 bg-[#0e141f]/90 backdrop-blur-sm border border-[#243044] rounded-lg p-2 max-w-[148px] text-[10px] space-y-1 shadow-lg">
               <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 border-b border-[#243044] pb-1">
-                Охлаждение мотора
+                Охлаждение ПЭД
               </div>
-              <div className="flex items-center justify-between font-mono">
+              <div className="flex items-center justify-between font-mono tabular-nums">
                 <span className="text-slate-400">V потока:</span>
                 <span className={`font-bold ${result.coolingStatus === 'OPTIMAL' || result.coolingStatus === 'ACCEPTABLE' ? 'text-emerald-400' : 'text-rose-400'}`}>
                   {result.coolingVelocityMs.toFixed(2)} м/с
                 </span>
               </div>
               <div className="flex items-center justify-between font-mono">
-                <span className="text-slate-400">Норматив:</span>
+                <span className="text-slate-400">Норма:</span>
                 <span className="text-slate-300">≥ 0.10 м/с</span>
               </div>
               <div className="flex items-center justify-between font-mono">
                 <span className="text-slate-400">Шрауд:</span>
                 <span className={`font-bold ${result.shroudRequired ? 'text-amber-400' : 'text-emerald-400'}`}>
-                  {result.shroudRequired ? 'Требуется' : 'Не нужен'}
+                  {result.shroudRequired ? 'Нужен' : 'Нет'}
                 </span>
               </div>
             </div>
+            </div>
+
+            {/* Компактный инспектор выбранного узла под схемой */}
+            {selectedNode ? (
+              <div className="bg-[#0e141f] border border-sky-500/40 rounded-lg p-2.5 text-[11px] space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-sky-300 truncate">{selectedNodeInfo[selectedNode].title}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedNode(null)}
+                    className="text-slate-400 hover:text-white shrink-0"
+                    aria-label="Закрыть карточку узла"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="font-mono text-[10px] text-slate-200">{selectedNodeInfo[selectedNode].summary}</div>
+                <div className="flex items-center justify-between gap-2 pt-0.5">
+                  <span className="text-[10px] text-slate-400 truncate">{selectedNodeInfo[selectedNode].detail}</span>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('detail')}
+                    className="text-[10px] font-mono text-sky-400 hover:text-sky-300 shrink-0"
+                  >
+                    Спецификация →
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-[10px] text-center text-slate-400 font-mono">
+                Нажмите на ЭЦН, ВМ, ПЭД или ТМС на чертеже для просмотра параметров узла
+              </div>
+            )}
           </div>
         ) : (
           /* Крупный инженерный план сборки УЭЦН */
