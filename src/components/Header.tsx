@@ -13,7 +13,8 @@ import {
   Download,
   Upload,
   FolderOpen,
-  ChevronDown
+  ChevronDown,
+  HelpCircle
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -31,6 +32,7 @@ interface HeaderProps {
   onImportJson: (file: File) => void;
   onOpenReport: () => void;
   onOpenCatalog: () => void;
+  onOpenHelp: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -46,7 +48,8 @@ export const Header: React.FC<HeaderProps> = ({
   onExportJson,
   onImportJson,
   onOpenReport,
-  onOpenCatalog
+  onOpenCatalog,
+  onOpenHelp
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const projectMenuRef = useRef<HTMLDivElement>(null);
@@ -265,6 +268,16 @@ export const Header: React.FC<HeaderProps> = ({
               {statusMessage.text}
             </span>
           )}
+
+          <button
+            type="button"
+            onClick={onOpenHelp}
+            className="px-2.5 py-1.5 bg-[#151d2b] hover:bg-[#1e293d] text-slate-200 border border-[#243044] text-xs font-medium rounded-lg flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0"
+            title="Открыть инструкцию по работе с программой"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
+            <span className="hidden md:inline">Инструкция</span>
+          </button>
 
           <button
             type="button"

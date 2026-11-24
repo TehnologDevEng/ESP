@@ -200,27 +200,43 @@ export const CalculationsAudit: React.FC<CalculationsAuditProps> = ({
               </div>
             </div>
 
-            {/* Карточка 4: Электрические потери */}
+            {/* Карточка 4: Составная кабельная линия */}
             <div className="bg-[#0b0e14] p-3.5 rounded-xl border border-[#1e2738] space-y-2">
               <div className="flex items-center justify-between text-xs border-b border-[#1e2738] pb-1.5">
                 <span className="font-bold text-slate-200 flex items-center gap-1.5">
                   <Zap className="w-3.5 h-3.5 text-amber-400" />
                   Кабельная линия
                 </span>
-                <span className="text-[10px] font-mono text-amber-400">{electrical.cableType}</span>
+                <span className="text-[10px] font-mono text-amber-400">
+                  3×{electrical.cableSection} {result.cableInsertLengthM > 0 ? `+ вст. ${result.cableInsertLengthM}м` : 'без вст.'}
+                </span>
               </div>
               <div className="space-y-1 text-xs font-mono">
                 <div className="flex justify-between text-slate-400">
-                  <span>Падение напряжения:</span>
-                  <span className="text-amber-300 font-bold">{Math.round(result.cableVoltageDropV)} В ({result.cableVoltageDropPercent.toFixed(1)}%)</span>
+                  <span>Ток / Iдоп (жила):</span>
+                  <span className={`font-bold ${result.cableWorkCurrentA > result.cableAllowableCurrentA ? 'text-rose-400' : 'text-emerald-400'}`}>
+                    {result.cableWorkCurrentA.toFixed(1)} / {result.cableAllowableCurrentA.toFixed(0)} А
+                  </span>
                 </div>
                 <div className="flex justify-between text-slate-400">
-                  <span>Напряжение на устье:</span>
-                  <span className="text-slate-200">{Math.round(result.surfaceVoltageV)} В</span>
+                  <span>Падение U (ТМПН):</span>
+                  <span className={`font-bold ${
+                    result.cableVoltageDropPercent > 18
+                      ? 'text-rose-400'
+                      : result.cableVoltageDropPercent > 12
+                      ? 'text-amber-300'
+                      : 'text-slate-200'
+                  }`}>
+                    {Math.round(result.cableVoltageDropV)} В ({result.cableVoltageDropPercent.toFixed(1)}%)
+                  </span>
                 </div>
                 <div className="flex justify-between text-slate-400">
-                  <span>Суточное энергопотребл.:</span>
-                  <span className="text-slate-200">{Math.round(result.dailyEnergyKWh)} кВт·ч</span>
+                  <span>Выход ТМПН / Потери:</span>
+                  <span className="text-slate-200">{Math.round(result.surfaceVoltageV)} В · {result.cableLossKW.toFixed(1)} кВт</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>T стыка / T жилы:</span>
+                  <span className="text-slate-200">{Math.round(result.cableSpliceTempC)}°C / {Math.round(result.cableMaxCoreTempC)}°C</span>
                 </div>
                 <div className="flex justify-between text-slate-400 border-t border-[#1e2738] pt-1 mt-1">
                   <span>Удельный расход:</span>
@@ -294,6 +310,19 @@ export const CalculationsAudit: React.FC<CalculationsAuditProps> = ({
                 <p className="text-slate-400 text-[11px]">
                   График отображает не одиночную ступень, а итоговую сборку из всех Z ступеней (до нескольких сотен метров/километров),
                   с учетом квадратичного изменения напора и кубического изменения потребляемой мощности вала от частоты ЧРП.
+                </p>
+              </div>
+
+              {/* Формула 5: Составная кабельная линия */}
+              <div className="space-y-1.5 bg-[#141b27] p-3 rounded-lg border border-[#243044] md:col-span-2">
+                <div className="font-bold text-blue-400">5. Составная кабельная линия (Удлинитель + Термовставка + Основной кабель)</div>
+                <div className="font-mono bg-[#0b0e14] p-2 rounded text-slate-200">
+                  RΣ = R_удл(T_пэд) + R_вст(T_вст) + R_осн(T_осн) ; ΔU = √3 · I · RΣ ; U_ТМПН = U_ПЭД + ΔU
+                </div>
+                <p className="text-slate-400 text-[11px]">
+                  Учитывает поучастковый нагрев медной жилы (α = 0.00393 /°C), проверку допустимого тока с температурной поправкой,
+                  температуру изоляции в точке стыка с термовставкой (300–400 м) и компенсацию падения напряжения отпайками ТМПН
+                  (до 12% — норма, 12–18% — допустимо по ТМПН, свыше 18% — рекомендация увеличить сечение или напряжение ПЭД).
                 </p>
               </div>
             </div>
@@ -371,15 +400,18 @@ export const CalculationsAudit: React.FC<CalculationsAuditProps> = ({
                       Высокая температура пласта ({well.tReservoir}°C) для {motor.name} (предел {motor.tempMaxC ?? 130}°C).
                       Переключите тип двигателя на <strong>ВПЭД (до 230°C)</strong> во вкладке «ЧРП/Кабель».
                     </span>
-                  ) : result.cableVoltageDropPercent > 6 ? (
-                    <span>
-                      Потери напряжения в кабеле сечением {electrical.cableSection} мм² составляют {result.cableVoltageDropPercent.toFixed(1)}%.
-                      Рекомендуется увеличить сечение до <strong>35 мм²</strong> для снижения тепловых потерь.
+                  ) : result.cableStatus === 'CRITICAL' ? (
+                    <span className="text-rose-300">
+                      {result.cableStatusMessage}
+                    </span>
+                  ) : result.cableStatus === 'WARNING' || result.cableStatus === 'ACCEPTABLE' ? (
+                    <span className="text-amber-300">
+                      {result.cableStatusMessage}
                     </span>
                   ) : (
                     <span>
-                      Запас прочности вала ({result.shaftLoadPercent.toFixed(0)}%), термостойкость {motor.name} и кабель {electrical.cableSection} мм²
-                      (падение {result.cableVoltageDropPercent.toFixed(1)}%) в пределах нормы.
+                      Запас прочности вала ({result.shaftLoadPercent.toFixed(0)}%), термостойкость {motor.name} и кабельная линия 3×{electrical.cableSection} мм²
+                      {result.cableInsertLengthM > 0 ? ` (с термовставкой ${result.cableInsertLengthM} м)` : ''} в норме: {result.cableStatusMessage}
                     </span>
                   )}
                 </p>

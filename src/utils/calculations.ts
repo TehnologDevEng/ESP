@@ -14,9 +14,199 @@ import {
   RegulationPoint
 } from '../types/esp';
 import { MOTOR_DATABASE, HYDRO_DATABASE } from '../data/motors';
-import { CABLE_SPECS } from '../data/cables';
+import { getCableSectionSpec, getCableGradeMaxTemp } from '../data/cables';
 
 const G = 9.80665; // Ускорение свободного падения, м/с²
+
+export interface CompositeCableCalculation {
+  workCurrentA: number;
+  allowableCurrentA: number;
+  rTotalOhm: number;
+  voltageDropV: number;
+  voltageDropPercent: number;
+  surfaceVoltageV: number;
+  cableLossKW: number;
+  spliceTempC: number;
+  maxCoreTempMainC: number;
+  maxCoreTempInsertC: number;
+  maxCoreTempMleC: number;
+  mainLengthM: number;
+  insertLengthM: number;
+  mleLengthM: number;
+  status: 'OPTIMAL' | 'ACCEPTABLE' | 'WARNING' | 'CRITICAL';
+  statusMessage: string;
+  warnings: string[];
+}
+
+/**
+ * Расчет составной кабельной линии УЭЦН:
+ * 1) Плоский удлинитель вдоль УЭЦН (MLE, обычно 20-30 м)
+ * 2) Термовставка над удлинителем (обычно 300-400 м, повышенная термостойкость 150-230°C)
+ * 3) Основной бронированный кабель до устья (обычно 3×16 / 3×25 / 3×35, 90-130°C)
+ */
+export function calculateCompositeCableLine(
+  well: WellParameters,
+  electrical: ElectricalParams,
+  motor: MotorModel,
+  shaftPowerKW: number
+): CompositeCableCalculation {
+  const totalL = Math.max(50, electrical.cableLength);
+  const mleLengthM = Math.min(totalL, Math.max(5, electrical.mleLengthM ?? 25));
+  const useInsert = electrical.useThermoInsert ?? true;
+  const requestedInsertM = useInsert ? Math.max(0, electrical.thermoInsertLengthM ?? 350) : 0;
+  const insertLengthM = Math.min(Math.max(0, totalL - mleLengthM), requestedInsertM);
+  const mainLengthM = Math.max(0, totalL - mleLengthM - insertLengthM);
+
+  const mleSection = electrical.mleSection ?? 16;
+  const insertSection = electrical.thermoInsertSection ?? electrical.cableSection;
+  const mainSection = electrical.cableSection;
+
+  const mleSpec = getCableSectionSpec(mleSection);
+  const insertSpec = getCableSectionSpec(insertSection);
+  const mainSpec = getCableSectionSpec(mainSection);
+
+  const depthRef = Math.max(100, well.depthPump);
+  const tempAtDepth = (z: number) =>
+    well.tWellhead + (well.tReservoir - well.tWellhead) * Math.max(0, Math.min(1, z / depthRef));
+
+  // Температурные зоны по стволу
+  const tMleAmb = well.tReservoir + 12; // Удлинитель проходит вдоль ПЭД и насоса (+подогрев от ПЭД)
+  const zInsertBottom = Math.max(0, well.depthPump - mleLengthM);
+  const zSplice = Math.max(0, well.depthPump - mleLengthM - insertLengthM);
+  const tInsertBottom = tempAtDepth(zInsertBottom) + 6;
+  const spliceTempC = insertLengthM > 0 ? tempAtDepth(zSplice) : tInsertBottom;
+  const tInsertAvg = (tInsertBottom + spliceTempC) / 2;
+  const tMainBottom = spliceTempC;
+  const tMainAvg = (tMainBottom + well.tWellhead) / 2;
+
+  // Активное сопротивление фазы по участкам (с температурной поправкой меди α = 0.00393 / °C)
+  const rMle = mleSpec.resistanceOhmPerKm * (mleLengthM / 1000) * (1 + 0.00393 * (tMleAmb - 20));
+  const rInsert = insertSpec.resistanceOhmPerKm * (insertLengthM / 1000) * (1 + 0.00393 * (tInsertAvg - 20));
+  const rMain = mainSpec.resistanceOhmPerKm * (mainLengthM / 1000) * (1 + 0.00393 * (tMainAvg - 20));
+  const rTotalOhm = rMle + rInsert + rMain;
+
+  // Рабочий ток, падение напряжения и потери
+  const workCurrentA =
+    shaftPowerKW > 0
+      ? (shaftPowerKW * 1000) / (Math.sqrt(3) * motor.voltageV * motor.powerFactor * (motor.efficiency / 100))
+      : 0;
+  const voltageDropV = Math.sqrt(3) * workCurrentA * rTotalOhm;
+  const voltageDropPercent = (voltageDropV / motor.voltageV) * 100;
+  const surfaceVoltageV = motor.voltageV + voltageDropV;
+  const cableLossKW = (3 * Math.pow(workCurrentA, 2) * rTotalOhm) / 1000;
+
+  // Самонагрев медной жилы током (порядка 22°C при номинальном токе)
+  const dTMle = Math.min(80, 22 * Math.pow(workCurrentA / mleSpec.baseMaxCurrentA, 2));
+  const dTInsert = Math.min(80, 22 * Math.pow(workCurrentA / insertSpec.baseMaxCurrentA, 2));
+  const dTMain = Math.min(80, 22 * Math.pow(workCurrentA / mainSpec.baseMaxCurrentA, 2));
+
+  const maxCoreTempMleC = tMleAmb + dTMle;
+  const maxCoreTempInsertC = tInsertBottom + dTInsert;
+  const maxCoreTempMainC = tMainBottom + dTMain;
+
+  // Классы термостойкости изоляции
+  const tMaxMain = getCableGradeMaxTemp(electrical.cableType, 130);
+  const insertType = electrical.thermoInsertType ?? 'КПсТБП-150';
+  const tMaxInsert = getCableGradeMaxTemp(insertType, 150);
+  const mleType = electrical.mleType ?? 'КПпБП-180';
+  const tMaxMle = getCableGradeMaxTemp(mleType, 180);
+
+  // Допустимый ток основного кабеля с температурной поправкой
+  const derateMain =
+    tMainBottom >= tMaxMain
+      ? 0.2
+      : Math.min(1, Math.sqrt(Math.max(0.05, (tMaxMain - tMainBottom) / Math.max(20, tMaxMain - 20))));
+  const allowableCurrentA = Math.round(mainSpec.baseMaxCurrentA * derateMain * 10) / 10;
+
+  const nextSection = mainSection < 25 ? 25 : mainSection < 35 ? 35 : null;
+  const warnings: string[] = [];
+  let status: 'OPTIMAL' | 'ACCEPTABLE' | 'WARNING' | 'CRITICAL' = 'OPTIMAL';
+
+  // 1. Проверка допустимого тока
+  if (workCurrentA > allowableCurrentA) {
+    status = 'CRITICAL';
+    warnings.push(
+      `Перегрузка кабеля 3×${mainSection} мм² по току: ${workCurrentA.toFixed(1)} А > допустимых ${allowableCurrentA.toFixed(0)} А (при T=${tMainBottom.toFixed(0)}°C). ${
+        nextSection
+          ? `Увеличьте сечение до ${nextSection} мм².`
+          : 'Выберите более высоковольтный ПЭД для снижения тока.'
+      }`
+    );
+  }
+
+  // 2. Проверка термостойкости изоляции по зонам
+  if (maxCoreTempMainC > tMaxMain) {
+    status = 'CRITICAL';
+    if (insertLengthM === 0) {
+      warnings.push(
+        `Перегрев изоляции основного кабеля ${electrical.cableType} (жила ${maxCoreTempMainC.toFixed(0)}°C > ${tMaxMain}°C). Включите термовставку 300–400 м (150–230°C).`
+      );
+    } else {
+      warnings.push(
+        `В точке стыка с термовставкой (L=${insertLengthM} м) температура жилы основного кабеля ${maxCoreTempMainC.toFixed(0)}°C превышает предел ${electrical.cableType} (${tMaxMain}°C). Увеличьте длину термовставки или класс основного кабеля.`
+      );
+    }
+  }
+
+  if (insertLengthM > 0 && maxCoreTempInsertC > tMaxInsert) {
+    status = 'CRITICAL';
+    warnings.push(
+      `Перегрев термовставки ${insertType} (жила ${maxCoreTempInsertC.toFixed(0)}°C > ${tMaxInsert}°C). Выберите вставку КПпБП-180 или КПсТБП-230.`
+    );
+  }
+
+  if (maxCoreTempMleC > tMaxMle) {
+    status = 'CRITICAL';
+    warnings.push(
+      `Перегрев плоского удлинителя ${mleType} вдоль ПЭД (жила ${maxCoreTempMleC.toFixed(0)}°C > ${tMaxMle}°C). Выберите удлинитель КПсТБП-230.`
+    );
+  }
+
+  // 3. Проверка падения напряжения с учётом отпаек ТМПН (промысловые пороги)
+  if (voltageDropPercent > 18 || surfaceVoltageV > 3000) {
+    if (status !== 'CRITICAL') status = 'WARNING';
+    warnings.push(
+      `Высокое падение напряжения в кабеле: ${Math.round(voltageDropV)} В (${voltageDropPercent.toFixed(1)}%, потери ${cableLossKW.toFixed(1)} кВт). ${
+        nextSection
+          ? `Рекомендуется увеличить сечение до ${nextSection} мм² или выбрать более высоковольтный ПЭД.`
+          : 'Рекомендуется выбрать более высоковольтный ПЭД.'
+      }`
+    );
+  } else if (voltageDropPercent > 12 && status === 'OPTIMAL') {
+    status = 'ACCEPTABLE';
+  }
+
+  let statusMessage = `Ток ${workCurrentA.toFixed(1)}/${allowableCurrentA.toFixed(0)} А, падение ${voltageDropPercent.toFixed(1)}% (компенс. ТМПН), изоляция в норме.`;
+  if (status === 'CRITICAL') {
+    statusMessage = warnings[0] || 'Превышены допустимые параметры кабельной линии.';
+  } else if (status === 'WARNING') {
+    statusMessage = warnings[0] || `Высокие потери в кабеле (${cableLossKW.toFixed(1)} кВт).`;
+  } else if (status === 'ACCEPTABLE') {
+    statusMessage = `Падение ${voltageDropPercent.toFixed(1)}% штатно компенсируется отпайкой ТМПН (${Math.round(surfaceVoltageV)} В), потери ${cableLossKW.toFixed(1)} кВт.${
+      nextSection ? ` Для экономии энергии можно сравнить с 3×${nextSection} мм².` : ''
+    }`;
+  }
+
+  return {
+    workCurrentA,
+    allowableCurrentA,
+    rTotalOhm,
+    voltageDropV,
+    voltageDropPercent,
+    surfaceVoltageV,
+    cableLossKW,
+    spliceTempC,
+    maxCoreTempMainC,
+    maxCoreTempInsertC,
+    maxCoreTempMleC,
+    mainLengthM,
+    insertLengthM,
+    mleLengthM,
+    status,
+    statusMessage,
+    warnings
+  };
+}
 
 export interface EvaluationOptions {
   motorPreference?: MotorPreference;
@@ -486,18 +676,14 @@ export function evaluatePumpModel(
     coolingMessage = `Удовлетворительная скорость потока (${coolingVelocityMs.toFixed(2)} м/с).`;
   }
 
-  // Расчет кабельной линии и падения напряжения
-  const cableSpec = CABLE_SPECS.find(c => c.sectionMm2 === electrical.cableSection) || CABLE_SPECS[1];
-  const tWellAvg = (well.tReservoir + well.tWellhead) / 2;
-  const rCableTotal = cableSpec.resistanceOhmPerKm * (electrical.cableLength / 1000) * (1 + 0.00393 * (tWellAvg - 20));
-
-  const workCurrentA = (fullStringShaftPowerKW * 1000) / (Math.sqrt(3) * motor.voltageV * motor.powerFactor * (motor.efficiency / 100));
-  const cableVoltageDropV = Math.sqrt(3) * workCurrentA * rCableTotal;
-  const cableVoltageDropPercent = (cableVoltageDropV / motor.voltageV) * 100;
-  const surfaceVoltageV = motor.voltageV + cableVoltageDropV;
+  // Расчет составной кабельной линии (удлинитель + термовставка + основной кабель)
+  const cableCalc = calculateCompositeCableLine(well, electrical, motor, fullStringShaftPowerKW);
+  const cableVoltageDropV = cableCalc.voltageDropV;
+  const cableVoltageDropPercent = cableCalc.voltageDropPercent;
+  const surfaceVoltageV = cableCalc.surfaceVoltageV;
 
   const motorActivePowerKW = fullStringShaftPowerKW / (motor.efficiency / 100);
-  const cableLossKW = (3 * Math.pow(workCurrentA, 2) * rCableTotal) / 1000;
+  const cableLossKW = cableCalc.cableLossKW;
   const totalSurfacePowerKW = motorActivePowerKW + cableLossKW;
 
   const dailyEnergyKWh = totalSurfacePowerKW * 24;
@@ -563,8 +749,8 @@ export function evaluatePumpModel(
   if (intake.freeGasIntakeFraction > 15) {
     warnings.push(`Высокое содержание свободного газа на приеме (${intake.freeGasIntakeFraction.toFixed(1)}%). Необходим ${intake.gasSeparatorType}.`);
   }
-  if (cableVoltageDropPercent > 8) {
-    warnings.push(`Падение напряжения в кабеле составляет ${cableVoltageDropPercent.toFixed(1)}% (> 8%). Рекомендуется увеличить сечение до 35 мм².`);
+  if (cableCalc.warnings.length > 0) {
+    warnings.push(...cableCalc.warnings);
   }
 
   return {
@@ -619,6 +805,17 @@ export function evaluatePumpModel(
     surfaceVoltageV,
     dailyEnergyKWh,
     specificEnergyKWhM3,
+    cableWorkCurrentA: cableCalc.workCurrentA,
+    cableAllowableCurrentA: cableCalc.allowableCurrentA,
+    cableLossKW: cableCalc.cableLossKW,
+    cableTotalResistanceOhm: cableCalc.rTotalOhm,
+    cableSpliceTempC: cableCalc.spliceTempC,
+    cableMaxCoreTempC: cableCalc.maxCoreTempMainC,
+    cableMainLengthM: cableCalc.mainLengthM,
+    cableInsertLengthM: cableCalc.insertLengthM,
+    cableMleLengthM: cableCalc.mleLengthM,
+    cableStatus: cableCalc.status,
+    cableStatusMessage: cableCalc.statusMessage,
     matchScore: score,
     isWithinOperatingRange,
     isCasingCompatible,
@@ -893,16 +1090,13 @@ export function calculateOperatingPoint(
   else if (motorLoadPct > 92) motorLoadStatus = 'ACCEPTABLE';
   else if (motorLoadPct < 55) motorLoadStatus = 'UNDERLOAD';
 
-  const cableSpec = CABLE_SPECS.find(c => c.sectionMm2 === electrical.cableSection) || CABLE_SPECS[1];
-  const tWellAvg = (well.tReservoir + well.tWellhead) / 2;
-  const rCableTotal = cableSpec.resistanceOhmPerKm * (electrical.cableLength / 1000) * (1 + 0.00393 * (tWellAvg - 20));
-
-  const motorCurrentA = (shaftPowerKW * 1000) / (Math.sqrt(3) * motor.voltageV * motor.powerFactor * (motor.efficiency / 100));
-  const cableVoltageDropV = Math.sqrt(3) * motorCurrentA * rCableTotal;
-  const surfaceVoltageV = motor.voltageV + cableVoltageDropV;
+  const cableCalc = calculateCompositeCableLine(well, electrical, motor, shaftPowerKW);
+  const motorCurrentA = cableCalc.workCurrentA;
+  const cableVoltageDropV = cableCalc.voltageDropV;
+  const surfaceVoltageV = cableCalc.surfaceVoltageV;
 
   const motorActivePowerKW = shaftPowerKW / (motor.efficiency / 100);
-  const cableLossKW = (3 * Math.pow(motorCurrentA, 2) * rCableTotal) / 1000;
+  const cableLossKW = cableCalc.cableLossKW;
   const totalSurfacePowerKW = motorActivePowerKW + cableLossKW;
   const dailyEnergyKWh = totalSurfacePowerKW * 24;
   const specificEnergyKWhM3 = actualQ > 0 ? dailyEnergyKWh / actualQ : 0;
@@ -956,6 +1150,9 @@ export function calculateOperatingPoint(
   }
   if (freeGasPct > 25) {
     warnings.push(`Повышенное содержание свободного газа на приеме (${freeGasPct.toFixed(1)}%). Рекомендуется приоткрыть затрубную задвижку.`);
+  }
+  if (cableCalc.warnings.length > 0) {
+    warnings.push(...cableCalc.warnings);
   }
 
   return {

@@ -54,7 +54,14 @@ export const PRESETS: WellPreset[] = [
       frequency: 50,
       cableLength: 2260,
       cableType: 'КПсБП-130',
-      cableSection: 25
+      cableSection: 16,
+      useThermoInsert: true,
+      thermoInsertLengthM: 350,
+      thermoInsertType: 'КПсТБП-150',
+      thermoInsertSection: 16,
+      mleLengthM: 25,
+      mleSection: 16,
+      mleType: 'КПпБП-180'
     }
   },
   {
@@ -99,8 +106,15 @@ export const PRESETS: WellPreset[] = [
     electrical: {
       frequency: 55,
       cableLength: 1910,
-      cableType: 'КПсТБП-150',
-      cableSection: 35
+      cableType: 'КПсБП-130',
+      cableSection: 25,
+      useThermoInsert: true,
+      thermoInsertLengthM: 300,
+      thermoInsertType: 'КПсТБП-150',
+      thermoInsertSection: 25,
+      mleLengthM: 25,
+      mleSection: 16,
+      mleType: 'КПпБП-180'
     }
   },
   {
@@ -146,7 +160,14 @@ export const PRESETS: WellPreset[] = [
       frequency: 48,
       cableLength: 2510,
       cableType: 'КПсБП-130',
-      cableSection: 25
+      cableSection: 16,
+      useThermoInsert: true,
+      thermoInsertLengthM: 400,
+      thermoInsertType: 'КПсТБП-150',
+      thermoInsertSection: 16,
+      mleLengthM: 25,
+      mleSection: 16,
+      mleType: 'КПпБП-180'
     }
   },
   {
@@ -192,7 +213,14 @@ export const PRESETS: WellPreset[] = [
       frequency: 52,
       cableLength: 2060,
       cableType: 'КПсБП-130',
-      cableSection: 25
+      cableSection: 16,
+      useThermoInsert: true,
+      thermoInsertLengthM: 350,
+      thermoInsertType: 'КПсТБП-150',
+      thermoInsertSection: 16,
+      mleLengthM: 25,
+      mleSection: 16,
+      mleType: 'КПпБП-180'
     }
   }
 ];

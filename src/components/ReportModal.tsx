@@ -46,7 +46,9 @@ export const ReportModal: React.FC<ReportModalProps> = ({
       ['Оборудование', 'Приемный модуль', result.gasSeparatorRequired ? result.gasSeparatorType : 'Входной модуль ВМ', '-'],
       ['Оборудование', 'Гидрозащита', result.hydro.name, '-'],
       ['Оборудование', 'Электродвигатель', result.motor.name, '-'],
-      ['Оборудование', 'Кабель', `${electrical.cableType} 3x${electrical.cableSection} (${electrical.cableLength} м)`, '-'],
+      ['Оборудование', 'Основной кабель', `${electrical.cableType} 3x${electrical.cableSection} (${result.cableMainLengthM} м)`, '-'],
+      ['Оборудование', 'Термовставка', result.cableInsertLengthM > 0 ? `${electrical.thermoInsertType ?? 'КПсТБП-150'} 3x${electrical.thermoInsertSection ?? electrical.cableSection} (${result.cableInsertLengthM} м)` : 'Отсутствует', '-'],
+      ['Оборудование', 'Плоский удлинитель (MLE)', `${electrical.mleType ?? 'КПпБП-180'} 3x${electrical.mleSection ?? 16} (${result.cableMleLengthM} м)`, '-'],
       ['Расчет', 'Требуемый напор TDH', String(Math.round(result.totalDynamicHead)), 'м'],
       ['Расчет', 'Напор сборки H(Q)', String(Math.round(result.fullStringHeadAtQ)), 'м'],
       ['Расчет', 'Мощность на валу', result.fullStringShaftPowerKW.toFixed(1), 'кВт'],
@@ -212,9 +214,18 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                 </tr>
                 <tr>
                   <td className="p-2 font-bold text-purple-300">Телеметрия и кабель</td>
-                  <td className="p-2 text-slate-200">ТМСН-3 + {electrical.cableType}</td>
-                  <td className="p-2 text-slate-300">3×{electrical.cableSection} мм² · L = {electrical.cableLength} м</td>
-                  <td className="p-2 text-slate-400">0.7 м</td>
+                  <td className="p-2 text-slate-200">
+                    ТМСН-3 + {electrical.cableType}
+                    {result.cableInsertLengthM > 0 ? ` + ${electrical.thermoInsertType ?? 'КПсТБП-150'}` : ''}
+                  </td>
+                  <td className="p-2 text-slate-300">
+                    Осн: 3×{electrical.cableSection} ({result.cableMainLengthM}м)
+                    {result.cableInsertLengthM > 0
+                      ? ` · Вст: 3×${electrical.thermoInsertSection ?? electrical.cableSection} (${result.cableInsertLengthM}м)`
+                      : ''}
+                    {` · Удл: 3×${electrical.mleSection ?? 16} (${result.cableMleLengthM}м)`}
+                  </td>
+                  <td className="p-2 text-slate-400">{electrical.cableLength} м</td>
                 </tr>
               </tbody>
             </table>
@@ -251,12 +262,14 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                 <span className="font-bold text-emerald-400">{result.coolingVelocityMs.toFixed(3)} м/с</span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[10px]">Падение U в кабеле:</span>
-                <span className="font-bold text-slate-100">{Math.round(result.cableVoltageDropV)} В ({result.cableVoltageDropPercent.toFixed(1)}%)</span>
+                <span className="text-slate-400 block text-[10px]">Падение U / Ток кабеля:</span>
+                <span className="font-bold text-slate-100">
+                  {Math.round(result.cableVoltageDropV)} В ({result.cableVoltageDropPercent.toFixed(1)}%) · {result.cableWorkCurrentA.toFixed(1)}/{result.cableAllowableCurrentA.toFixed(0)} А
+                </span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[10px]">Напряжение ТМПН:</span>
-                <span className="font-bold text-slate-100">{Math.round(result.surfaceVoltageV)} В</span>
+                <span className="text-slate-400 block text-[10px]">Напряжение ТМПН / Потери:</span>
+                <span className="font-bold text-slate-100">{Math.round(result.surfaceVoltageV)} В · {result.cableLossKW.toFixed(1)} кВт</span>
               </div>
               <div>
                 <span className="text-slate-400 block text-[10px]">Удельный расход энергии:</span>

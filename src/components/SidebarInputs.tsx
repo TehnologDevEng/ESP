@@ -608,21 +608,27 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
             {/* Сечение кабеля */}
             <div>
               <label className="text-xs text-slate-300 font-medium block mb-1">
-                Сечение жилы кабеля
+                Сечение основного кабеля
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {[16, 25, 35].map((sec) => (
                   <button
                     key={sec}
                     type="button"
-                    onClick={() => updateElectrical('cableSection', sec)}
+                    onClick={() =>
+                      onChangeElectrical({
+                        ...electrical,
+                        cableSection: sec,
+                        thermoInsertSection: sec
+                      })
+                    }
                     className={`py-2 px-1 rounded-lg border text-xs font-mono font-bold transition-all ${
                       electrical.cableSection === sec
                         ? 'border-blue-500 bg-blue-600/30 text-blue-300'
                         : 'border-[#243044] bg-[#0b0e14] text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    3 x {sec} мм²
+                    3 × {sec} мм²
                   </button>
                 ))}
               </div>
@@ -631,7 +637,7 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
             {/* Длина кабеля */}
             <div>
               <div className="flex items-center justify-between text-xs mb-1">
-                <label className="text-slate-400">Длина кабельной линии</label>
+                <label className="text-slate-400">Общая длина линии</label>
                 <span className="font-mono text-slate-300">{electrical.cableLength} м</span>
               </div>
               <SmartNumberInput
@@ -641,6 +647,82 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
                 max={5000}
                 unit="м"
               />
+              {(() => {
+                const useIns = electrical.useThermoInsert ?? true;
+                const mleL = Math.min(electrical.cableLength, Math.max(5, electrical.mleLengthM ?? 25));
+                const insL = useIns ? Math.min(Math.max(0, electrical.cableLength - mleL), Math.max(0, electrical.thermoInsertLengthM ?? 350)) : 0;
+                const mainL = Math.max(0, electrical.cableLength - mleL - insL);
+                return (
+                  <div className="mt-1 text-[10px] font-mono text-slate-400 flex items-center justify-between bg-[#0b0e14] px-2 py-1 rounded border border-[#1e2738]">
+                    <span>Осн: <strong className="text-slate-200">{mainL}м</strong></span>
+                    <span>Вст: <strong className={insL > 0 ? 'text-amber-300' : 'text-slate-500'}>{insL}м</strong></span>
+                    <span>Удл: <strong className="text-sky-300">{mleL}м</strong></span>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Термовставка (300-400 м) */}
+            <div className="bg-[#0e141f] border border-[#243044] rounded-lg p-2.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-amber-300">Термовставка (над удлинителем)</span>
+                <button
+                  type="button"
+                  onClick={() => updateElectrical('useThermoInsert', !(electrical.useThermoInsert ?? true))}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-all ${
+                    (electrical.useThermoInsert ?? true)
+                      ? 'bg-amber-600/25 border-amber-500/70 text-amber-300'
+                      : 'bg-[#0b0e14] border-[#243044] text-slate-500'
+                  }`}
+                >
+                  {(electrical.useThermoInsert ?? true) ? 'ВКЛ' : 'ВЫКЛ'}
+                </button>
+              </div>
+
+              {(electrical.useThermoInsert ?? true) && (
+                <div className="space-y-2 pt-0.5">
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[300, 350, 400].map((len) => (
+                      <button
+                        key={len}
+                        type="button"
+                        onClick={() => updateElectrical('thermoInsertLengthM', len)}
+                        className={`py-1 rounded border text-[10px] font-mono font-bold transition-all ${
+                          (electrical.thermoInsertLengthM ?? 350) === len
+                            ? 'border-amber-500/70 bg-amber-600/25 text-amber-200'
+                            : 'border-[#243044] bg-[#0b0e14] text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {len} м
+                      </button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-slate-400 block mb-0.5">Длина вставки</label>
+                      <SmartNumberInput
+                        value={electrical.thermoInsertLengthM ?? 350}
+                        onChange={(val) => updateElectrical('thermoInsertLengthM', val)}
+                        min={50}
+                        max={1200}
+                        unit="м"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400 block mb-0.5">Марка вставки</label>
+                      <select
+                        value={electrical.thermoInsertType ?? 'КПсТБП-150'}
+                        onChange={(e) => updateElectrical('thermoInsertType', e.target.value)}
+                        className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-2 py-2 text-[11px] font-mono text-white focus:outline-none focus:border-amber-500"
+                      >
+                        <option value="КПсТБП-150">КПсТБП-150 (150°C)</option>
+                        <option value="КПпБП-180">КПпБП-180 (180°C)</option>
+                        <option value="КПсТБП-230">КПсТБП-230 (230°C)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Выбор типа и модели двигателя ПЭД / ВПЭД */}
@@ -711,16 +793,66 @@ export const SidebarInputs: React.FC<SidebarInputsProps> = ({
               {showElectricalAdvanced && (
                 <div className="mt-2.5 space-y-2.5 pt-1">
                   <div>
-                    <label className="text-xs text-slate-400 block mb-1">Марка кабеля</label>
+                    <label className="text-xs text-slate-400 block mb-1">Марка основного кабеля</label>
                     <select
                       value={electrical.cableType}
                       onChange={(e) => updateElectrical('cableType', e.target.value)}
                       className="w-full bg-[#0b0e14] border border-[#243044] rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none"
                     >
-                      <option value="КПсБП-130">КПсБП-130 (Бронированный, до 130°C)</option>
+                      <option value="КПБП-90">КПБП-90 (ПЭ стандарт, до 90°C)</option>
                       <option value="КПбП-120">КПбП-120 (Стандартный, до 120°C)</option>
+                      <option value="КПсБП-130">КПсБП-130 (Сшитый ПЭ, до 130°C)</option>
                       <option value="КПсТБП-150">КПсТБП-150 (Термостойкий, до 150°C)</option>
                     </select>
+                  </div>
+
+                  {/* Параметры плоского удлинителя (MLE) */}
+                  <div className="bg-[#0b0e14] border border-[#1e2738] rounded-lg p-2.5 space-y-2">
+                    <div className="text-[10px] font-bold text-sky-400 uppercase tracking-wider">
+                      Плоский удлинитель вдоль УЭЦН (MLE)
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-slate-400 block mb-0.5">Длина удлинителя</label>
+                        <SmartNumberInput
+                          value={electrical.mleLengthM ?? 25}
+                          onChange={(val) => updateElectrical('mleLengthM', val)}
+                          min={5}
+                          max={60}
+                          unit="м"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-400 block mb-0.5">Сечение MLE</label>
+                        <div className="grid grid-cols-2 gap-1">
+                          {[10, 16].map((sec) => (
+                            <button
+                              key={sec}
+                              type="button"
+                              onClick={() => updateElectrical('mleSection', sec)}
+                              className={`py-2 rounded-lg border text-[10px] font-mono font-bold transition-all ${
+                                (electrical.mleSection ?? 16) === sec
+                                  ? 'border-sky-500 bg-sky-600/25 text-sky-200'
+                                  : 'border-[#243044] bg-[#131924] text-slate-400 hover:text-slate-200'
+                              }`}
+                            >
+                              3×{sec}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400 block mb-0.5">Марка удлинителя</label>
+                      <select
+                        value={electrical.mleType ?? 'КПпБП-180'}
+                        onChange={(e) => updateElectrical('mleType', e.target.value)}
+                        className="w-full bg-[#131924] border border-[#243044] rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-white focus:outline-none"
+                      >
+                        <option value="КПпБП-180">КПпБП-180 (Плоский, до 180°C)</option>
+                        <option value="КПсТБП-230">КПсТБП-230 (Сверхтермостойкий, до 230°C)</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div>

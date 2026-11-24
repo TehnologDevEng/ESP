@@ -11,6 +11,7 @@ import { CalculationsAudit } from './components/CalculationsAudit';
 import { OperationModeView } from './components/OperationModeView';
 import { ReportModal } from './components/ReportModal';
 import { EquipmentCatalogModal } from './components/EquipmentCatalogModal';
+import { HelpModal } from './components/HelpModal';
 import { AlertTriangle, ChevronDown } from 'lucide-react';
 import {
   WellParameters,
@@ -54,6 +55,7 @@ export default function App() {
   const [selectedPumpId, setSelectedPumpId] = useState<string>('');
   const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
   const [isCatalogOpen, setIsCatalogOpen] = useState<boolean>(false);
+  const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
   const [showAllWarnings, setShowAllWarnings] = useState<boolean>(false);
 
   // Сохраненные пользователем скважины
@@ -243,6 +245,7 @@ export default function App() {
         onImportJson={handleImportJson}
         onOpenReport={() => setIsReportOpen(true)}
         onOpenCatalog={() => setIsCatalogOpen(true)}
+        onOpenHelp={() => setIsHelpOpen(true)}
       />
 
       {/* Основная рабочая область CAD интерфейса */}
@@ -513,6 +516,12 @@ export default function App() {
         selectedPumpName={activeResult?.pump?.name}
         selectedMotorName={activeResult?.motor?.name}
         selectedHydroName={activeResult?.hydro?.name}
+      />
+
+      {/* Модальное окно инструкции пользователя */}
+      <HelpModal
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
       />
     </div>
   );

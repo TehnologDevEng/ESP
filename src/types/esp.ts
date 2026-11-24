@@ -42,9 +42,16 @@ export interface CompletionGeometry {
 
 export interface ElectricalParams {
   frequency: number;           // Частота питающего тока ЧРП, Гц (30 - 70)
-  cableLength: number;         // Длина кабеля (L_спуск + запас на устье), м
-  cableType: string;           // Марка кабеля (КПбП-120, КПсБП-130)
-  cableSection: number;        // Сечение токопроводящей жилы, мм² (16, 25, 35)
+  cableLength: number;         // Общая длина кабельной линии (L_спуск + запас на устье), м
+  cableType: string;           // Марка основного кабеля (КПБП-90, КПбП-120, КПсБП-130...)
+  cableSection: number;        // Сечение жилы основного кабеля, мм² (16, 25, 35)
+  useThermoInsert?: boolean;   // Наличие термовставки над удлинителем (по умолчанию true)
+  thermoInsertLengthM?: number;// Длина термовставки, м (обычно 300-400 м)
+  thermoInsertType?: string;   // Марка термовставки (КПсТБП-150, КПпБП-180, КПсТБП-230)
+  thermoInsertSection?: number;// Сечение термовставки, мм² (16, 25, 35)
+  mleLengthM?: number;         // Длина плоского удлинителя вдоль УЭЦН (MLE), м (обычно 20-30 м)
+  mleSection?: number;         // Сечение плоского удлинителя, мм² (10 или 16)
+  mleType?: string;            // Марка удлинителя (КПпБП-180, КПсТБП-230)
 }
 
 export interface PumpModel {
@@ -173,6 +180,17 @@ export interface CalculationResult {
   surfaceVoltageV: number;     // Требуемое напряжение на выходе ТМПН, В
   dailyEnergyKWh: number;      // Суточный расход электроэнергии, кВт·ч/сут
   specificEnergyKWhM3: number; // Удельный расход электроэнергии, кВт·ч/м³
+  cableWorkCurrentA: number;   // Рабочий фазный ток в кабеле, А
+  cableAllowableCurrentA: number; // Допустимый ток жилы с учётом температуры, А
+  cableLossKW: number;         // Активные потери мощности в кабеле, кВт
+  cableTotalResistanceOhm: number; // Суммарное сопротивление фазы (с учётом T), Ом
+  cableSpliceTempC: number;    // Температура скважины в точке стыка основного кабеля и термовставки, °C
+  cableMaxCoreTempC: number;   // Расчётная макс. температура жилы основного кабеля, °C
+  cableMainLengthM: number;    // Длина участка основного кабеля, м
+  cableInsertLengthM: number;  // Длина участка термовставки, м
+  cableMleLengthM: number;     // Длина плоского удлинителя вдоль УЭЦН, м
+  cableStatus: 'OPTIMAL' | 'ACCEPTABLE' | 'WARNING' | 'CRITICAL';
+  cableStatusMessage: string;
   
   // Оценка соответствия (Match Index)
   matchScore: number;          // Индекс качества подбора, 0 - 100%
